@@ -26,13 +26,15 @@ struct mp3_PlayerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.appDatabase, appDatabase)
-                .environment(\.playbackController, playbackController)
-                .environment(\.appleMusicService, appleMusicService)
-                .environment(\.progressCenter, progressCenter)
-                .environmentObject(playbackController)
-                .environmentObject(progressCenter)
+            OverlayableRootView {
+                ContentView()
+                    .environment(\.appDatabase, appDatabase)
+                    .environment(\.playbackController, playbackController)
+                    .environment(\.appleMusicService, appleMusicService)
+                    .environment(\.progressCenter, progressCenter)
+                    .environmentObject(playbackController)
+                    .environmentObject(progressCenter)
+            }
         }
     }
 }

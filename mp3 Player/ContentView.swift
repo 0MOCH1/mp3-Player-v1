@@ -42,7 +42,7 @@ struct ContentView: View {
             SettingsView()
         }
         .sheet(isPresented: $showsNowPlaying) {
-            NowPlayingView()
+            AppleMusicNowPlayingView()
         }
         .task {
             guard !didStartScan else { return }
