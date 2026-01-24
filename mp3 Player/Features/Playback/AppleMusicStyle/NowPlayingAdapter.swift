@@ -105,11 +105,3 @@ struct DisplayMedia {
         )
     }
 }
-
-enum ButtonType {
-    case play
-    case pause
-    case stop
-    case forward
-    case backward
-}

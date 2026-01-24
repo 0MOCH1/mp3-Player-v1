@@ -135,13 +135,6 @@ private extension ExpandableNowPlaying {
     }
 }
 
-extension Animation {
-    static let playerExpandAnimationDuration: TimeInterval = 0.3
-    static var playerExpandAnimation: Animation {
-        .smooth(duration: playerExpandAnimationDuration, extraBounce: 0)
-    }
-}
-
 private struct ProgressTracker: View, Animatable {
     var progress: CGFloat = 0
 
