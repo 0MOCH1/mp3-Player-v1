@@ -14,10 +14,8 @@ struct ColorfulBackground: View {
     var body: some View {
         MulticolorGradient(
             points: model.points,
-            animationUpdateHandler: { [weak model] newPoints in
-                Task { @MainActor in
-                    model?.onUpdate(animatedData: newPoints)
-                }
+            animationUpdateHandler: { @MainActor [weak model] newPoints in
+                model?.onUpdate(animatedData: newPoints)
             }
         )
         .onAppear {

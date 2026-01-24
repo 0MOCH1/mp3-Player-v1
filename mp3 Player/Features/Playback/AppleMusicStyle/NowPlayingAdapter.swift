@@ -39,7 +39,7 @@ class NowPlayingAdapter {
     var playPauseButton: ButtonType {
         switch controller.state {
         case .playing: .pause
-        case .paused, .stopped: .play
+        case .paused, .stopped, .buffering: .play
         }
     }
     
@@ -72,7 +72,7 @@ class NowPlayingAdapter {
     
     func seek(to time: Double) {
         Task {
-            await controller.seek(to: time)
+            controller.seek(to: time)
         }
     }
     

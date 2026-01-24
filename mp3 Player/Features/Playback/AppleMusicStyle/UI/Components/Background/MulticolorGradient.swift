@@ -9,23 +9,20 @@ import SwiftUI
 
 struct MulticolorGradient: View, Animatable {
     var points: ColorPoints
-    var animationUpdateHandler: (@Sendable (ColorPoints) -> Void)?
+    var animationUpdateHandler: (@MainActor @Sendable (ColorPoints) -> Void)?
 
     var uniforms: Uniforms {
         Uniforms(params: GradientParams(points: points, bias: 0.05, power: 2.5, noise: 2))
     }
 
-    nonisolated var animatableData: ColorPoints.AnimatableData {
+    var animatableData: ColorPoints.AnimatableData {
         get {
             points.animatableData
         }
         set {
             let newPoints = ColorPoints(newValue)
             points = newPoints
-            let viewCopy = self
-            Task { @MainActor in
-                viewCopy.animationUpdateHandler?(newPoints)
-            }
+            animationUpdateHandler?(newPoints)
         }
     }
 

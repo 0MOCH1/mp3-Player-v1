@@ -7,10 +7,20 @@ import UIKit
 
 extension UIScreen {
     static var deviceCornerRadius: CGFloat {
-        main.value(forKey: "_displayCornerRadius") as? CGFloat ?? 0
+        if let windowScene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+           let screen = windowScene.screen {
+            return screen.value(forKey: "_displayCornerRadius") as? CGFloat ?? 0
+        }
+        return 0
     }
 
     static var hairlineWidth: CGFloat {
-        1 / main.scale
+        if let windowScene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+           let screen = windowScene.screen {
+            return 1 / screen.scale
+        }
+        return 1.0
     }
 }
