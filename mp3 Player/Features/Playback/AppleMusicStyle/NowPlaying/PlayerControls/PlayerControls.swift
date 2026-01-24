@@ -53,14 +53,18 @@ private extension PlayerControls {
                     .fontWeight(.semibold)
                     .foregroundStyle(Color(palette.opaque))
                     .id(model.display.title)
+                    .allowsHitTesting(false)
                 MarqueeText(model.display.subtitle ?? "", config: cfg)
                     .transformEffect(.identity)
                     .foregroundStyle(Color(palette.opaque))
                     .blendMode(.overlay)
                     .id(model.display.subtitle)
+                    .allowsHitTesting(false)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .allowsHitTesting(false)
         }
+        .allowsHitTesting(false)
     }
 
     func volume(playerSize: CGSize) -> some View {

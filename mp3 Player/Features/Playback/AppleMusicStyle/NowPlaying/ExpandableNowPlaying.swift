@@ -59,6 +59,8 @@ private extension ExpandableNowPlaying {
                     expanded: expanded,
                     isFullExpanded: isFullExpanded
                 )
+                .edgesIgnoringSafeArea(.all)
+                
                 CompactNowPlaying(
                     expanded: $expanded,
                     animationNamespace: animationNamespace
@@ -80,10 +82,10 @@ private extension ExpandableNowPlaying {
             .padding(.horizontal, expanded ? 0 : 12)
             .offset(y: offsetY)
             .gesture(
-                PanGesture(
+                expanded ? PanGesture(
                     onChange: { handleGestureChange(value: $0, viewSize: size) },
                     onEnd: { handleGestureEnd(value: $0, viewSize: size) }
-                )
+                ) : nil
             )
             .ignoresSafeArea()
         }

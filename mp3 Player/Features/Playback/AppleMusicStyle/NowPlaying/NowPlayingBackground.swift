@@ -16,8 +16,7 @@ struct NowPlayingBackground: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        let expandPlayerCornerRadius = (isFullExpanded ? 0 : UIScreen.deviceCornerRadius)
-        return ZStack {
+        ZStack {
             Rectangle()
                 .fill(.thickMaterial)
             if canBeExpanded {
@@ -26,7 +25,7 @@ struct NowPlayingBackground: View {
                     .opacity(expanded ? 1 : 0)
             }
         }
-        .clipShape(.rect(cornerRadius: expanded ? expandPlayerCornerRadius : 14))
+        .clipShape(.rect(cornerRadius: expanded ? 0 : 14))
         .frame(height: expanded ? nil : ViewConst.compactNowPlayingHeight)
         .shadow(
             color: .primary.opacity(colorScheme == .light ? 0.2 : 0),

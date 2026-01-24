@@ -27,15 +27,28 @@ struct TimingIndicator: View {
         .sliderStyle(.playbackProgress)
         .frame(height: 60)
         .transformEffect(.identity)
-        .onChange(of: model.currentTime) { _, newTime in
-            progress = newTime
+        .onAppear {
+            progress = model.currentTime
         }
-        .onChange(of: progress) { _, newProgress in
-            if abs(newProgress - model.currentTime) > 1.0 {
-                model.seek(to: newProgress)
+        .onChange(of: model.currentTime) { _, newTime in
+            // Only update if not actively scrubbing
+            if !isScrubbing {
+                progress = newTime
             }
         }
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    isScrubbing = true
+                }
+                .onEnded { _ in
+                    isScrubbing = false
+                    model.seek(to: progress)
+                }
+        )
     }
+    
+    @State private var isScrubbing: Bool = false
 }
 
 private extension TimingIndicator {
