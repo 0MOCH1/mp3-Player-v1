@@ -84,25 +84,34 @@ private extension PlayerControls {
                 .padding(.horizontal, 8)
 
             footer(width: playerSize.width)
-                // Reduced spacing to verticalSpacing-40 (20pt more reduction)
-                .padding(.top, playerSize.verticalSpacing - 40)
-                // Increased bottom padding by 35pt total (was 15, now 35 for +20)
-                .padding(.bottom, 35)
+                // Reduced spacing: verticalSpacing-30 (10pt closer)
+                .padding(.top, playerSize.verticalSpacing - 30)
+                // Reduced bottom padding to 25pt (10pt less)
+                .padding(.bottom, 25)
                 .padding(.horizontal, ViewConst.playerCardPaddings)
         }
     }
 
     func footer(width: CGFloat) -> some View {
-        // Fixed spacing of 60pt between buttons
-        HStack(alignment: .center, spacing: 60) {
-            // Lyrics button - toggles state on tap, no sheet
+        // Spacing of 80pt between buttons (20pt wider)
+        HStack(alignment: .center, spacing: 80) {
+            // Lyrics button with circle background
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     lyricsToggled.toggle()
                 }
             } label: {
-                Image(systemName: lyricsToggled ? "quote.bubble.fill" : "quote.bubble")
-                    .font(.system(size: 20, weight: .semibold))
+                ZStack {
+                    Circle()
+                        .fill(lyricsToggled ? Color(palette.opaque) : Color(palette.opaque).opacity(0))
+                        .frame(width: 44, height: 44)
+                        .blendMode(lyricsToggled ? .normal : .overlay)
+                    
+                    Image(systemName: lyricsToggled ? "quote.bubble.fill" : "quote.bubble")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(lyricsToggled ? Color(palette.transparent) : Color(palette.opaque))
+                        .blendMode(lyricsToggled ? .normal : .overlay)
+                }
             }
             
             // AirPlay button - using center alignment to ignore text height
@@ -116,18 +125,25 @@ private extension PlayerControls {
             }
             .disabled(true) // Disable button, let AVRoutePickerView handle interaction
             
-            // Queue button - toggles state on tap, no sheet
+            // Queue button with circle background
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     queueToggled.toggle()
                 }
             } label: {
-                Image(systemName: queueToggled ? "list.bullet.circle.fill" : "list.bullet")
-                    .font(.system(size: 20, weight: .semibold))
+                ZStack {
+                    Circle()
+                        .fill(queueToggled ? Color(palette.opaque) : Color(palette.opaque).opacity(0))
+                        .frame(width: 44, height: 44)
+                        .blendMode(queueToggled ? .normal : .overlay)
+                    
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(queueToggled ? Color(palette.transparent) : Color(palette.opaque))
+                        .blendMode(queueToggled ? .normal : .overlay)
+                }
             }
         }
-        .foregroundStyle(Color(palette.opaque))
-        .blendMode(.overlay)
     }
 }
 
