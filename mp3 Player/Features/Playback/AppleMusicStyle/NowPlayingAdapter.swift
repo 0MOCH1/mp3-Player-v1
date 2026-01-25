@@ -18,6 +18,7 @@ class NowPlayingAdapter {
     private(set) var currentItem: PlaybackItem?
     private(set) var currentTime: Double = 0
     private(set) var duration: Double = 0
+    private(set) var currentLyrics: String?
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -50,11 +51,18 @@ class NowPlayingAdapter {
             }
             .store(in: &cancellables)
         
+        controller.$currentLyrics
+            .sink { [weak self] newLyrics in
+                self?.currentLyrics = newLyrics
+            }
+            .store(in: &cancellables)
+        
         // Initialize with current values
         self.state = controller.state
         self.currentItem = controller.currentItem
         self.currentTime = controller.currentTime
         self.duration = controller.duration
+        self.currentLyrics = controller.currentLyrics
     }
     
     var display: DisplayMedia {

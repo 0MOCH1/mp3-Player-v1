@@ -10,6 +10,8 @@ import SwiftUI
 struct PlayerControls: View {
     @Environment(NowPlayingAdapter.self) var model
     @State private var volume: Double = 0.5
+    @State private var showLyrics = false
+    @State private var showQueue = false
 
     var body: some View {
         GeometryReader {
@@ -80,21 +82,35 @@ private extension PlayerControls {
 
     func footer(width: CGFloat) -> some View {
         HStack(alignment: .top, spacing: width * 0.18) {
-            Button {} label: {
+            // Lyrics button
+            Button {
+                showLyrics = true
+            } label: {
                 Image(systemName: "quote.bubble")
                     .font(.title2)
             }
+            .sheet(isPresented: $showLyrics) {
+                LyricsView()
+                    .environment(model)
+            }
+            
+            // AirPlay button
             VStack(spacing: 6) {
-                Button {} label: {
-                    Image(systemName: "airpods.gen3")
-                        .font(.title2)
-                }
-                Text("iPhone's Airpods")
+                AirPlayButton()
+                Text("AirPlay")
                     .font(.caption)
             }
-            Button {} label: {
+            
+            // Queue button
+            Button {
+                showQueue = true
+            } label: {
                 Image(systemName: "list.bullet")
                     .font(.title2)
+            }
+            .sheet(isPresented: $showQueue) {
+                QueueView()
+                    .environment(model)
             }
         }
         .foregroundStyle(Color(palette.opaque))
