@@ -18,14 +18,14 @@ struct PlayerControls: View {
             let size = $0.size
             let spacing = size.verticalSpacing
             VStack(spacing: 0) {
-                // Always use the same structure for consistent positioning
                 VStack(spacing: spacing) {
-                    if showTrackInfo {
-                        trackInfo
-                    } else {
-                        // Empty space to maintain consistent layout
-                        Color.clear.frame(height: 44)
-                    }
+                    // Track info with slide + fade animation
+                    // S0→Other: slides up while fading out
+                    // Other→S0: slides down while fading in
+                    trackInfo
+                        .opacity(showTrackInfo ? 1 : 0)
+                        .offset(y: showTrackInfo ? 0 : -20)
+                    
                     let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
                     TimingIndicator(spacing: spacing)
                         .padding(.top, spacing)

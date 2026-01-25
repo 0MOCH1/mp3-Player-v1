@@ -57,7 +57,7 @@ class NowPlayingStateManager {
     
     /// Toggle lyrics view (S0 ↔ S1)
     func toggleLyrics() {
-        withAnimation(.linear(duration: 0.25)) {
+        withAnimation(.smooth(duration: 0.35)) {
             switch currentState {
             case .standard:
                 currentState = .lyricsSmall
@@ -72,7 +72,7 @@ class NowPlayingStateManager {
     
     /// Toggle queue view (S0 ↔ S3)
     func toggleQueue() {
-        withAnimation(.linear(duration: 0.25)) {
+        withAnimation(.smooth(duration: 0.35)) {
             switch currentState {
             case .standard:
                 currentState = .queueSmall
@@ -92,7 +92,7 @@ class NowPlayingStateManager {
     
     /// Return to standard state (S0) - triggered by tapping compact header
     func returnToStandard() {
-        withAnimation(.linear(duration: 0.25)) {
+        withAnimation(.smooth(duration: 0.35)) {
             currentState = .standard
             isQueueEditMode = false
         }
@@ -101,7 +101,7 @@ class NowPlayingStateManager {
     /// Expand lyrics to large (S1 → S2)
     func expandLyrics() {
         guard currentState == .lyricsSmall else { return }
-        withAnimation(.linear(duration: 0.25)) {
+        withAnimation(.smooth(duration: 0.35)) {
             currentState = .lyricsLarge
         }
     }
@@ -109,7 +109,7 @@ class NowPlayingStateManager {
     /// Collapse lyrics to small (S2 → S1)
     func collapseLyrics() {
         guard currentState == .lyricsLarge else { return }
-        withAnimation(.linear(duration: 0.25)) {
+        withAnimation(.smooth(duration: 0.35)) {
             currentState = .lyricsSmall
         }
     }
@@ -117,7 +117,7 @@ class NowPlayingStateManager {
     /// Enter queue reorder mode (S3 → S4)
     func enterQueueReorderMode() {
         guard currentState == .queueSmall else { return }
-        withAnimation(.linear(duration: 0.25)) {
+        withAnimation(.smooth(duration: 0.35)) {
             currentState = .queueReorderLarge
             isQueueEditMode = true
         }
@@ -126,7 +126,7 @@ class NowPlayingStateManager {
     /// Exit queue reorder mode (S4 → S3)
     func exitQueueReorderMode() {
         guard currentState == .queueReorderLarge else { return }
-        withAnimation(.linear(duration: 0.25)) {
+        withAnimation(.smooth(duration: 0.35)) {
             currentState = .queueSmall
             isQueueEditMode = false
         }
@@ -143,7 +143,7 @@ class NowPlayingStateManager {
     /// Snap to position A (history gate)
     func snapToA() {
         guard currentState == .queueSmall else { return }
-        withAnimation(.linear(duration: 0.25)) {
+        withAnimation(.smooth(duration: 0.35)) {
             snapPosition = .snapA
         }
     }
@@ -151,7 +151,7 @@ class NowPlayingStateManager {
     /// Snap to position B (main/initial)
     func snapToB() {
         guard currentState == .queueSmall else { return }
-        withAnimation(.linear(duration: 0.25)) {
+        withAnimation(.smooth(duration: 0.35)) {
             snapPosition = .snapB
         }
     }

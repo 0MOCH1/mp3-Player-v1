@@ -3,8 +3,8 @@
 //  mp3 Player
 //
 //  Queue controls row with toggle buttons
-//  Based on PLAYING_SCREEN_SPEC.md section 6.7
-//  Toggle style: filled circle cutout (like S1/S2 lyrics button)
+//  Based on PLAYING_SCREEN_SPEC.md section 6.7 and reference image S3, SnapB.PNG
+//  Toggle style: pill-shaped (capsule) buttons
 //
 
 import SwiftUI
@@ -13,11 +13,10 @@ struct QueueControlsView: View {
     @Environment(NowPlayingAdapter.self) var model
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             // Shuffle button
             QueueToggleButton(
-                iconNormal: "shuffle",
-                iconActive: "shuffle",
+                icon: "shuffle",
                 isActive: model.controller.isShuffleEnabled
             ) {
                 model.controller.isShuffleEnabled.toggle()
@@ -25,8 +24,7 @@ struct QueueControlsView: View {
             
             // Repeat button
             QueueToggleButton(
-                iconNormal: "repeat",
-                iconActive: repeatIconName,
+                icon: repeatIconName,
                 isActive: model.controller.repeatMode != .off
             ) {
                 cycleRepeatMode()
@@ -34,24 +32,22 @@ struct QueueControlsView: View {
             
             // Autoplay (infinity) button
             QueueToggleButton(
-                iconNormal: "infinity",
-                iconActive: "infinity",
+                icon: "infinity",
                 isActive: false  // TODO: Connect to autoplay state
             ) {
                 // Toggle autoplay
             }
             
-            // Continuous playback button
+            // Continuous playback button (per reference image)
             QueueToggleButton(
-                iconNormal: "goforward",
-                iconActive: "goforward",
+                icon: "antenna.radiowaves.left.and.right",
                 isActive: false  // TODO: Connect to continuous playback state
             ) {
                 // Toggle continuous playback
             }
         }
         .padding(.horizontal, ViewConst.playerCardPaddings)
-        .padding(.vertical, 8)
+        .padding(.vertical, 12)
     }
     
     private var repeatIconName: String {
@@ -74,32 +70,31 @@ struct QueueControlsView: View {
     }
 }
 
-/// Toggle button with filled circle cutout style (matches S1/S2 lyrics button)
+/// Pill-shaped toggle button (matches reference image S3, SnapB.PNG)
 struct QueueToggleButton: View {
-    let iconNormal: String
-    let iconActive: String
+    let icon: String
     let isActive: Bool
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            ZStack {
-                // Background circle - visible when active
-                if isActive {
-                    Circle()
-                        .fill(Color(Palette.PlayerCard.opaque))
-                        .frame(width: 36, height: 36)
-                }
-                
-                // Icon - blend mode creates cutout effect on circle
-                Image(systemName: isActive ? iconActive : iconNormal)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(isActive ? 0.15 : 0.6))
-                    .blendMode(isActive ? .destinationOut : .normal)
-            }
-            .compositingGroup()
-            .frame(maxWidth: .infinity)
-            .frame(height: 36)
+            Image(systemName: icon)
+                .font(.body.weight(.medium))
+                .foregroundStyle(
+                    isActive
+                        ? Color(Palette.PlayerCard.opaque)
+                        : Color(Palette.PlayerCard.opaque).opacity(0.6)
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(
+                    Capsule()
+                        .fill(
+                            isActive
+                                ? Color(Palette.PlayerCard.opaque).opacity(0.3)
+                                : Color(Palette.PlayerCard.opaque).opacity(0.15)
+                        )
+                )
         }
         .buttonStyle(.plain)
     }

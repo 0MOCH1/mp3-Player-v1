@@ -6,62 +6,29 @@
 //
 
 import SwiftUI
-import AVFoundation
+import MediaPlayer
 
-public struct VolumeSlider: View {
-    @Environment(NowPlayingAdapter.self) var model
-    @State var volume: Double = 0.5
-    @State var minVolumeAnimationTrigger: Bool = false
-    @State var maxVolumeAnimationTrigger: Bool = false
-    let range = 0.0 ... 1
-
-    public var body: some View {
-        ElasticSlider(
-            value: $volume,
-            in: range,
-            leadingLabel: {
-                Image(systemName: "speaker.fill")
-                    .padding(.trailing, 10)
-                    .symbolEffect(.bounce, value: minVolumeAnimationTrigger)
-            },
-            trailingLabel: {
-                Image(systemName: "speaker.wave.3.fill")
-                    .padding(.leading, 10)
-                    .symbolEffect(.bounce, value: maxVolumeAnimationTrigger)
-            }
-        )
-        .sliderStyle(.volume)
-        .font(.system(size: 14))
-        .onAppear {
-            // Initialize with controller's volume
-            volume = Double(model.controller.volume)
+/// System volume slider using MPVolumeView for device volume control
+public struct VolumeSlider: UIViewRepresentable {
+    
+    public func makeUIView(context: Context) -> MPVolumeView {
+        let volumeView = MPVolumeView(frame: .zero)
+        volumeView.showsVolumeSlider = true
+        volumeView.showsRouteButton = false
+        
+        // Style the slider to match the player design
+        volumeView.tintColor = UIColor(Palette.PlayerCard.opaque)
+        
+        // Find and style the slider
+        if let slider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider {
+            slider.minimumTrackTintColor = UIColor(Palette.PlayerCard.opaque).withAlphaComponent(0.8)
+            slider.maximumTrackTintColor = UIColor(Palette.PlayerCard.translucent).withAlphaComponent(0.3)
+            slider.thumbTintColor = UIColor(Palette.PlayerCard.opaque)
         }
-        .onChange(of: volume) { oldValue, newValue in
-            // Update controller volume
-            model.controller.setVolume(Float(newValue))
-            
-            if newValue == range.lowerBound {
-                minVolumeAnimationTrigger.toggle()
-            }
-            if newValue == range.upperBound {
-                maxVolumeAnimationTrigger.toggle()
-            }
-        }
-        .frame(height: 50)
+        
+        return volumeView
     }
-}
-
-extension ElasticSliderConfig {
-    static var volume: Self {
-        Self(
-            labelLocation: .side,
-            maxStretch: 10,
-            minimumTrackActiveColor: Color(Palette.PlayerCard.opaque),
-            minimumTrackInactiveColor: Color(Palette.PlayerCard.translucent),
-            maximumTrackColor: Color(Palette.PlayerCard.translucent),
-            blendMode: .overlay,
-            syncLabelsStyle: true
-        )
-    }
+    
+    public func updateUIView(_ uiView: MPVolumeView, context: Context) {}
 }
 

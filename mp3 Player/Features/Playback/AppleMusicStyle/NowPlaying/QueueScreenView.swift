@@ -4,13 +4,12 @@
 //
 //  Queue view for S3 (small) and S4 (reorder large) states
 //  Per PLAYING_SCREEN_SPEC.md sections 6.1-6.10
-//  Based on reference images S3, SnapA/SnapB.PNG and S4.PNG
 //
 //  Structure (top to bottom, per spec 6.1):
 //  1) History section
-//  2) Compact track info (scrollable list item)
-//  3) Queue controls (sticky header)
-//  4) Current queue list
+//  2) CompactTrackInfo (scrollable list item)
+//  3) QueueControls (sticky header - always visible)
+//  4) CurrentQueue list
 //
 
 import SwiftUI
@@ -26,91 +25,37 @@ struct QueueScreenView: View {
     private let compactAnchorID = "compactTrackInfo"
     private let historyBottomID = "historyBottom"
     
-    // Artwork size matching TrackRowView (48pt)
-    private let artworkSize: CGFloat = 48
-    
     var body: some View {
         ScrollViewReader { proxy in
-            List {
-                // 1) History section (per spec 6.1, 6.6)
-                Section {
-                    if historyItems.isEmpty {
-                        // Per spec 6.10: Empty history shows section but empty
-                        Color.clear.frame(height: 8)
-                            .listRowBackground(Color.clear)
-                    } else {
-                        ForEach(historyItems) { item in
-                            HistoryItemRow(item: item, artworkSize: artworkSize) {
-                                playFromHistory(item)
-                            }
-                            .listRowBackground(Color.clear)
-                            .listRowInsets(EdgeInsets())
-                        }
+            ScrollView(.vertical, showsIndicators: true) {
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    // 1) History section (per spec 6.1, 6.6)
+                    historySection
+                    
+                    // Marker for Snap A position
+                    Color.clear
+                        .frame(height: 1)
+                        .id(historyBottomID)
+                    
+                    // 2) CompactTrackInfo as scrollable list item (per spec 6.1)
+                    CompactTrackInfoQueueHeader {
+                        stateManager.returnToStandard()
                     }
-                } header: {
-                    HStack {
-                        Text("履歴")
-                            .font(.headline)
-                            .foregroundStyle(Color(Palette.PlayerCard.opaque))
-                        
-                        Spacer()
-                        
-                        if !historyItems.isEmpty {
-                            Button("消去") {
-                                clearHistory()
-                            }
-                            .font(.subheadline)
-                            .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.7))
-                        }
+                    .id(compactAnchorID)
+                    
+                    // 3) QueueControls as sticky header (per spec 6.7)
+                    // 4) CurrentQueue as section content
+                    Section {
+                        currentQueueSection
+                    } header: {
+                        QueueControlsView()
+                            .background(Color.clear)
                     }
-                    .textCase(nil)
-                }
-                
-                // Marker for Snap A position
-                Color.clear
-                    .frame(height: 1)
-                    .id(historyBottomID)
-                    .listRowBackground(Color.clear)
-                
-                // 2) Compact track info as scrollable list item (per spec 6.1)
-                CompactTrackInfoQueueHeader {
-                    stateManager.returnToStandard()
-                }
-                .id(compactAnchorID)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-                
-                // 3) Queue controls (per spec 6.7)
-                QueueControlsView()
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-                
-                // 4) Current queue section header
-                Section {
-                    currentQueueItems
-                } header: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("再生を続ける")
-                            .font(.headline)
-                            .foregroundStyle(Color(Palette.PlayerCard.opaque))
-                        
-                        // Source label (per spec 6.8)
-                        if let currentItem = model.currentItem, let album = currentItem.album {
-                            Text("再生元: \(album)")
-                                .font(.subheadline)
-                                .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.6))
-                        }
-                    }
-                    .textCase(nil)
                 }
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .environment(\.editMode, .constant(stateManager.isQueueEditMode ? .active : .inactive))
             .onAppear {
                 loadHistory()
-                // Per spec 6.2: Scroll to Snap B on appear
-                // Dispatch to main queue to ensure List is fully rendered
+                // Per spec 6.2: Initial position is Snap B
                 if !didScrollToInitial {
                     DispatchQueue.main.async {
                         proxy.scrollTo(compactAnchorID, anchor: .top)
@@ -119,7 +64,7 @@ struct QueueScreenView: View {
                 }
             }
             .onChange(of: stateManager.snapPosition) { _, newPosition in
-                withAnimation(.linear(duration: 0.25)) {
+                withAnimation(.smooth(duration: 0.35)) {
                     switch newPosition {
                     case .snapA:
                         proxy.scrollTo(historyBottomID, anchor: .bottom)
@@ -131,15 +76,78 @@ struct QueueScreenView: View {
         }
     }
     
-    // MARK: - Current Queue Items
+    // MARK: - History Section
     
     @ViewBuilder
-    private var currentQueueItems: some View {
+    private var historySection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // History header with clear button (per spec 6.6)
+            HStack {
+                Text("履歴")
+                    .font(.headline)
+                    .foregroundStyle(Color(Palette.PlayerCard.opaque))
+                
+                Spacer()
+                
+                if !historyItems.isEmpty {
+                    Button("消去") {
+                        clearHistory()
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.7))
+                }
+            }
+            .padding(.horizontal, ViewConst.playerCardPaddings)
+            .padding(.vertical, 12)
+            
+            // History items
+            if historyItems.isEmpty {
+                // Per spec 6.10: Empty history shows section but empty
+                Color.clear.frame(height: 8)
+            } else {
+                ForEach(historyItems) { item in
+                    HistoryItemRow(item: item) {
+                        playFromHistory(item)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Current Queue Section
+    
+    @ViewBuilder
+    private var currentQueueSection: some View {
         let queueItems = model.controller.queueItems
         let currentIndex = getCurrentIndex()
         
         // Filter to only show items after current (per spec 6.8)
         let upNextItems = Array(queueItems.dropFirst(currentIndex + 1))
+        
+        // Queue section header
+        VStack(alignment: .leading, spacing: 4) {
+            Text("再生を続ける")
+                .font(.headline)
+                .foregroundStyle(Color(Palette.PlayerCard.opaque))
+            
+            // Source label (per spec 6.8)
+            if let currentItem = model.currentItem, let album = currentItem.album {
+                Text("再生元: \(album)")
+                    .font(.subheadline)
+                    .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.6))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, ViewConst.playerCardPaddings)
+        .padding(.vertical, 12)
+        
+        // Separator line (visible in S4 per reference)
+        if stateManager.currentState == .queueReorderLarge {
+            Rectangle()
+                .fill(Color(Palette.PlayerCard.opaque).opacity(0.3))
+                .frame(height: 1)
+                .padding(.horizontal, ViewConst.playerCardPaddings)
+        }
         
         if upNextItems.isEmpty {
             // Per spec 6.10: Empty queue message
@@ -150,29 +158,22 @@ struct QueueScreenView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 40)
-            .listRowBackground(Color.clear)
         } else {
-            // Queue items with reorder support
-            ForEach(upNextItems) { item in
+            // Queue items with reorder handle (per spec 6.8)
+            ForEach(Array(upNextItems.enumerated()), id: \.element.id) { index, item in
                 QueueItemRow(
                     item: item,
-                    artworkSize: artworkSize,
+                    onTap: {
+                        // Play this item
+                    },
                     onDelete: {
-                        if let index = queueItems.firstIndex(where: { $0.id == item.id }) {
-                            deleteQueueItem(at: index)
-                        }
+                        deleteQueueItem(at: currentIndex + 1 + index)
+                    },
+                    onDragStart: {
+                        // Per spec 3.3: Reorder handle drag starts S4
+                        stateManager.enterQueueReorderMode()
                     }
                 )
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            }
-            .onMove { fromOffsets, toOffset in
-                moveQueueItems(fromOffsets: fromOffsets, toOffset: toOffset, baseIndex: currentIndex + 1)
-            }
-            .onDelete { offsets in
-                offsets.forEach { index in
-                    deleteQueueItem(at: currentIndex + 1 + index)
-                }
             }
         }
     }
@@ -202,19 +203,12 @@ struct QueueScreenView: View {
     private func deleteQueueItem(at index: Int) {
         model.controller.removeFromQueue(at: index)
     }
-    
-    private func moveQueueItems(fromOffsets: IndexSet, toOffset: Int, baseIndex: Int) {
-        let adjustedFromOffsets = IndexSet(fromOffsets.map { $0 + baseIndex })
-        let adjustedToOffset = toOffset + baseIndex
-        model.controller.moveQueue(fromOffsets: adjustedFromOffsets, toOffset: adjustedToOffset)
-    }
 }
 
 // MARK: - Supporting Views
 
 struct HistoryItemRow: View {
     let item: HistoryDisplayItem
-    let artworkSize: CGFloat
     let onTap: () -> Void
     
     var body: some View {
@@ -225,17 +219,17 @@ struct HistoryItemRow: View {
                     cornerRadius: 6,
                     contentMode: .fill
                 )
-                .frame(width: artworkSize, height: artworkSize)
+                .frame(width: 56, height: 56)
                 
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(item.title)
-                        .font(.callout)
+                        .font(.body)
                         .foregroundStyle(Color(Palette.PlayerCard.opaque))
                         .lineLimit(1)
                     
                     if let artist = item.artist {
                         Text(artist)
-                            .font(.caption)
+                            .font(.subheadline)
                             .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.7))
                             .lineLimit(1)
                     }
@@ -244,7 +238,7 @@ struct HistoryItemRow: View {
                 Spacer()
             }
             .padding(.horizontal, ViewConst.playerCardPaddings)
-            .padding(.vertical, 4)
+            .padding(.vertical, 8)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -253,8 +247,11 @@ struct HistoryItemRow: View {
 
 struct QueueItemRow: View {
     let item: PlaybackItem
-    let artworkSize: CGFloat
+    let onTap: () -> Void
     let onDelete: () -> Void
+    let onDragStart: () -> Void
+    
+    @GestureState private var isDragging = false
     
     var body: some View {
         HStack(spacing: 12) {
@@ -263,26 +260,50 @@ struct QueueItemRow: View {
                 cornerRadius: 6,
                 contentMode: .fill
             )
-            .frame(width: artworkSize, height: artworkSize)
+            .frame(width: 56, height: 56)
             
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
-                    .font(.callout)
+                    .font(.body)
                     .foregroundStyle(Color(Palette.PlayerCard.opaque))
                     .lineLimit(1)
                 
                 if let artist = item.artist {
                     Text(artist)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.7))
                         .lineLimit(1)
                 }
             }
             
             Spacer()
+            
+            // Reorder handle (per spec 6.8: 並び替え：常に可能)
+            Image(systemName: "line.3.horizontal")
+                .font(.title3)
+                .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.5))
+                .padding(.trailing, 4)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .updating($isDragging) { _, state, _ in
+                            if !state {
+                                state = true
+                                onDragStart()
+                            }
+                        }
+                )
         }
         .padding(.horizontal, ViewConst.playerCardPaddings)
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
         .contentShape(Rectangle())
+        .onTapGesture {
+            onTap()
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            // Per spec 6.8: Left swipe delete without confirmation
+            Button(role: .destructive, action: onDelete) {
+                Label("削除", systemImage: "trash")
+            }
+        }
     }
 }

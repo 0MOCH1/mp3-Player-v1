@@ -2,13 +2,13 @@
 //  CompactTrackInfoView.swift
 //  mp3 Player
 //
-//  Compact track info (48pt) for all modes
+//  Compact track info for different modes
 //  Per PLAYING_SCREEN_SPEC.md section 1.1
 //
 
 import SwiftUI
 
-/// Compact track info header (48pt) for all modes - consistent size
+/// Compact track info header (48pt) for lyrics mode (S1/S2)
 struct CompactTrackInfoView: View {
     @Environment(NowPlayingAdapter.self) var model
     let onTap: () -> Void
@@ -51,20 +51,20 @@ struct CompactTrackInfoView: View {
     }
 }
 
-/// Compact track info for queue list header (as scrollable element per spec 1.1)
-/// Uses same 48pt sizing as lyrics mode for consistency
+/// Compact track info for queue list header (per spec 1.1 and reference S3, SnapB.PNG)
+/// Shows larger artwork (~100pt), title, artist, star button, and menu button
 struct CompactTrackInfoQueueHeader: View {
     @Environment(NowPlayingAdapter.self) var model
     let onTap: () -> Void
     
-    private let artworkSize: CGFloat = 48
+    private let artworkSize: CGFloat = 100
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Artwork - same size as lyrics mode for consistency
+        HStack(spacing: 16) {
+            // Larger artwork for queue mode (matches reference image)
             ArtworkImageView(
                 artworkUri: model.display.artworkUri,
-                cornerRadius: 6,
+                cornerRadius: 8,
                 contentMode: .fill
             )
             .frame(width: artworkSize, height: artworkSize)
@@ -73,16 +73,16 @@ struct CompactTrackInfoQueueHeader: View {
             }
             
             // Title and artist
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(model.display.title)
-                    .font(.callout)
+                    .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundStyle(Color(Palette.PlayerCard.opaque))
-                    .lineLimit(1)
+                    .lineLimit(2)
                 
                 if let subtitle = model.display.subtitle {
                     Text(subtitle)
-                        .font(.footnote)
+                        .font(.subheadline)
                         .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.7))
                         .lineLimit(1)
                 }
@@ -90,18 +90,33 @@ struct CompactTrackInfoQueueHeader: View {
             
             Spacer()
             
-            // Menu button
+            // Star (favorite) button
+            Button {
+                // Toggle favorite
+            } label: {
+                Image(systemName: "star.fill")
+                    .font(.title2)
+                    .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.8))
+            }
+            .buttonStyle(.plain)
+            
+            // Menu button (pill shaped)
             Button {
                 // Show menu
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.body)
-                    .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.8))
+                    .foregroundStyle(Color(Palette.PlayerCard.opaque))
+                    .padding(12)
+                    .background(
+                        Capsule()
+                            .fill(Color(Palette.PlayerCard.opaque).opacity(0.2))
+                    )
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, ViewConst.playerCardPaddings)
-        .padding(.vertical, 8)
+        .padding(.vertical, 16)
     }
 }
 
