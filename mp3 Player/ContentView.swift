@@ -41,7 +41,7 @@ struct ContentView: View {
         .sheet(isPresented: $showsSettings) {
             SettingsView()
         }
-        .sheet(isPresented: $showsNowPlaying) {
+        .fullScreenCover(isPresented: $showsNowPlaying) {
             AppleMusicNowPlayingView()
         }
         .task {

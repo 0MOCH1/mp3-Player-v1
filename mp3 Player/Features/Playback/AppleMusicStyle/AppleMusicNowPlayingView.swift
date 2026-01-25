@@ -7,24 +7,24 @@ import SwiftUI
 
 struct AppleMusicNowPlayingView: View {
     @Environment(\.playbackController) private var playbackController
+    @Environment(\.dismiss) private var dismiss
     @State private var adapter: NowPlayingAdapter?
-    @State private var showOverlay = false
-    @State private var expanded = false
+    @State private var expanded = true
     
     var body: some View {
-        Color.clear
-            .universalOverlay(show: $showOverlay) {
-                if let adapter {
-                    ExpandableNowPlaying(show: $showOverlay, expanded: $expanded)
-                        .environment(adapter)
-                }
+        ZStack {
+            if let adapter {
+                ExpandableNowPlayingDirect(
+                    expanded: $expanded,
+                    onDismiss: { dismiss() }
+                )
+                .environment(adapter)
             }
-            .onAppear {
-                if let controller = playbackController {
-                    adapter = NowPlayingAdapter(controller: controller)
-                }
-                showOverlay = true
-                expanded = true
+        }
+        .onAppear {
+            if let controller = playbackController {
+                adapter = NowPlayingAdapter(controller: controller)
             }
+        }
     }
 }
