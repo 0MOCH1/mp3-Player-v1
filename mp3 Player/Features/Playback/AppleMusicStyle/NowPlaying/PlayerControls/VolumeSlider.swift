@@ -14,16 +14,17 @@ public struct VolumeSlider: UIViewRepresentable {
     public func makeUIView(context: Context) -> MPVolumeView {
         let volumeView = MPVolumeView(frame: .zero)
         volumeView.showsVolumeSlider = true
-        volumeView.showsRouteButton = false
+        // Hide route button - we use separate AirPlayButton
+        volumeView.setRouteButtonImage(UIImage(), for: .normal)
         
         // Style the slider to match the player design
-        volumeView.tintColor = UIColor(Palette.PlayerCard.opaque)
+        volumeView.tintColor = Palette.PlayerCard.opaque
         
         // Find and style the slider
         if let slider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider {
-            slider.minimumTrackTintColor = UIColor(Palette.PlayerCard.opaque).withAlphaComponent(0.8)
-            slider.maximumTrackTintColor = UIColor(Palette.PlayerCard.translucent).withAlphaComponent(0.3)
-            slider.thumbTintColor = UIColor(Palette.PlayerCard.opaque)
+            slider.minimumTrackTintColor = Palette.PlayerCard.opaque.withAlphaComponent(0.8)
+            slider.maximumTrackTintColor = Palette.PlayerCard.translucent.withAlphaComponent(0.3)
+            slider.thumbTintColor = Palette.PlayerCard.opaque
         }
         
         return volumeView
