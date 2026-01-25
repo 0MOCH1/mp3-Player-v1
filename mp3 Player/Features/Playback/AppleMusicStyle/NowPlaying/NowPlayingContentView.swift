@@ -34,6 +34,7 @@ struct NowPlayingContentView: View {
         .padding(.top, safeArea.top)
         .padding(.bottom, safeArea.bottom)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: stateManager.currentState)
+        .environment(stateManager)
     }
     
     private var grip: some View {
