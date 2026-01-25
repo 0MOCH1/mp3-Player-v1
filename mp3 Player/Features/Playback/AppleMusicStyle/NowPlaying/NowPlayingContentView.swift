@@ -21,8 +21,9 @@ struct NowPlayingContentView: View {
                 .blendMode(.overlay)
                 .padding(.top, 8)
             
-            // Compact header (visible in S1-S4 per spec 1.1)
-            if stateManager.showsCompactHeader {
+            // Compact header (visible only in lyrics mode S1/S2 per spec 1.1)
+            // Queue mode has its own header in the scrollable list
+            if stateManager.isLyricsMode {
                 CompactTrackInfoView {
                     stateManager.returnToStandard()
                 }
@@ -30,18 +31,18 @@ struct NowPlayingContentView: View {
                 .padding(.top, 12)
             }
             
-            // Main content area
+            // Main content area - takes all available space
             mainContent
+                .frame(maxHeight: .infinity)
             
             // Controls section (visible in S0, S1, S3 per spec 1.2)
             if stateManager.showsControls {
-                PlayerControls(stateManager: stateManager, showTrackInfo: !stateManager.showsCompactHeader)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                PlayerControls(stateManager: stateManager, showTrackInfo: stateManager.currentState == .standard)
             }
         }
         .padding(.top, safeArea.top)
         .padding(.bottom, safeArea.bottom)
-        .environment(stateManager)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: stateManager.currentState)
     }
     
     private var grip: some View {
@@ -56,38 +57,24 @@ struct NowPlayingContentView: View {
         case .standard:
             // S0: Standard state with large artwork
             standardContent
-                .transition(.opacity)
             
         case .lyricsSmall, .lyricsLarge:
             // S1/S2: Lyrics view
             LyricsScreenView(stateManager: stateManager)
-                .transition(.opacity)
             
         case .queueSmall, .queueReorderLarge:
             // S3/S4: Queue view
             QueueScreenView(stateManager: stateManager)
-                .transition(.opacity)
         }
     }
     
     @ViewBuilder
     private var standardContent: some View {
-        GeometryReader { geo in
-            let artworkSize = min(geo.size.width - 50, geo.size.height * 0.6)
-            
-            VStack {
-                Spacer()
-                
-                // Large artwork (per spec 2.1 S0)
-                artwork
-                    .frame(width: artworkSize, height: artworkSize)
-                
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .padding(.horizontal, 25)
-        .padding(.vertical, size.height < 700 ? 10 : 30)
+        // S0: Standard state with large artwork (same as original)
+        artwork
+            .frame(height: size.width - 50)
+            .padding(.vertical, size.height < 700 ? 10 : 30)
+            .padding(.horizontal, 25)
     }
     
     private var artwork: some View {

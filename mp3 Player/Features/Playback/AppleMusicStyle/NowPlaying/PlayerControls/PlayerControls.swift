@@ -28,7 +28,7 @@ struct PlayerControls: View {
                     }
                     .frame(height: size.height / 2.5, alignment: .top)
                 } else {
-                    // When track info is hidden, just show timing indicator
+                    // When in compact mode, show only timing indicator
                     let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
                     TimingIndicator(spacing: spacing)
                         .padding(.horizontal, indicatorPadding)
@@ -90,14 +90,13 @@ private extension PlayerControls {
 
     func footer(width: CGFloat) -> some View {
         HStack(alignment: .top, spacing: width * 0.18) {
-            // Lyrics button (per spec 3.1)
+            // Lyrics button
             Button {
                 stateManager?.toggleLyrics()
             } label: {
                 ZStack {
                     Image(systemName: "quote.bubble")
                         .font(.title2)
-                    
                     // Active indicator when in lyrics mode
                     if stateManager?.isLyricsMode == true {
                         Circle()
@@ -107,25 +106,20 @@ private extension PlayerControls {
                     }
                 }
             }
-            
             // AirPlay button
             VStack(spacing: 6) {
-                Button {} label: {
-                    Image(systemName: "airpods.gen3")
-                        .font(.title2)
-                }
+                AirPlayButton()
+                    .frame(width: 24, height: 24)
                 Text("iPhone's Airpods")
                     .font(.caption)
             }
-            
-            // Queue button (per spec 3.1, 6.9)
+            // Queue button
             Button {
                 stateManager?.toggleQueue()
             } label: {
                 ZStack {
                     Image(systemName: "list.bullet")
                         .font(.title2)
-                    
                     // Show shuffle/repeat state on queue button (per spec 6.9)
                     if stateManager != nil {
                         if model.controller.isShuffleEnabled {

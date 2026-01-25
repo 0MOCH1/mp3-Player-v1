@@ -2,9 +2,9 @@
 //  QueueControlsView.swift
 //  mp3 Player
 //
-//  Queue controls header with shuffle/repeat buttons
-//  Per PLAYING_SCREEN_SPEC.md section 6.7
-//  Sticky header that remains visible when QueueControls reaches top
+//  Queue controls row with toggle buttons
+//  Based on reference image S3, SnapB.PNG
+//  Shows: Shuffle, Repeat, Autoplay (infinity), and another toggle
 //
 
 import SwiftUI
@@ -13,51 +13,48 @@ struct QueueControlsView: View {
     @Environment(NowPlayingAdapter.self) var model
     
     var body: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: 12) {
             // Shuffle button
-            Button {
+            QueueToggleButton(
+                icon: "shuffle",
+                isActive: model.controller.isShuffleEnabled
+            ) {
                 model.controller.isShuffleEnabled.toggle()
-            } label: {
-                Image(systemName: "shuffle")
-                    .font(.title3)
-                    .foregroundStyle(
-                        model.controller.isShuffleEnabled
-                            ? Color(Palette.PlayerCard.opaque)
-                            : Color(Palette.PlayerCard.opaque).opacity(0.5)
-                    )
             }
-            .buttonStyle(.plain)
             
-            // Repeat button (3 states per spec 6.7)
-            Button {
+            // Repeat button
+            QueueToggleButton(
+                icon: repeatIconName,
+                isActive: model.controller.repeatMode != .off
+            ) {
                 cycleRepeatMode()
-            } label: {
-                repeatIcon
-                    .font(.title3)
-                    .foregroundStyle(
-                        model.controller.repeatMode != .off
-                            ? Color(Palette.PlayerCard.opaque)
-                            : Color(Palette.PlayerCard.opaque).opacity(0.5)
-                    )
             }
-            .buttonStyle(.plain)
             
-            Spacer()
+            // Autoplay (infinity) button
+            QueueToggleButton(
+                icon: "infinity",
+                isActive: false  // TODO: Connect to autoplay state
+            ) {
+                // Toggle autoplay
+            }
+            
+            // Continuous playback button
+            QueueToggleButton(
+                icon: "goforward",
+                isActive: false  // TODO: Connect to continuous playback state
+            ) {
+                // Toggle continuous playback
+            }
         }
         .padding(.horizontal, ViewConst.playerCardPaddings)
         .padding(.vertical, 12)
-        .background(.ultraThinMaterial.opacity(0.5))
     }
     
-    @ViewBuilder
-    private var repeatIcon: some View {
+    private var repeatIconName: String {
         switch model.controller.repeatMode {
-        case .off:
-            Image(systemName: "repeat")
-        case .one:
-            Image(systemName: "repeat.1")
-        case .all:
-            Image(systemName: "repeat")
+        case .off: return "repeat"
+        case .one: return "repeat.1"
+        case .all: return "repeat"
         }
     }
     
@@ -72,3 +69,33 @@ struct QueueControlsView: View {
         }
     }
 }
+
+struct QueueToggleButton: View {
+    let icon: String
+    let isActive: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(
+                    isActive
+                        ? Color(Palette.PlayerCard.opaque)
+                        : Color(Palette.PlayerCard.opaque).opacity(0.6)
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(
+                            isActive
+                                ? Color(Palette.PlayerCard.opaque).opacity(0.25)
+                                : Color(Palette.PlayerCard.opaque).opacity(0.1)
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
