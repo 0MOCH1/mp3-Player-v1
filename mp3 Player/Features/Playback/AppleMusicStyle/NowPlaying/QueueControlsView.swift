@@ -5,13 +5,14 @@
 
 import SwiftUI
 
-/// Queue control buttons: Shuffle, Repeat, Infinity (autoplay), and Queue mode toggle
+/// Queue control buttons: Shuffle, Repeat (per spec section 6.7)
 /// This appears as a sticky header in the queue screen (S3/S4)
+/// Per spec: ボタン：シャッフル、リピート
 struct QueueControlsView: View {
     @Environment(NowPlayingAdapter.self) var model
     
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 12) {
             // Shuffle button
             QueueControlButton(
                 icon: "shuffle",
@@ -21,30 +22,12 @@ struct QueueControlsView: View {
                 }
             )
             
-            // Repeat button
+            // Repeat button (3 states per spec: off, one, all)
             QueueControlButton(
                 icon: repeatIcon,
                 isActive: model.controller.repeatMode != .off,
                 action: {
                     cycleRepeatMode()
-                }
-            )
-            
-            // Infinity/Autoplay button
-            QueueControlButton(
-                icon: "infinity",
-                isActive: false, // TODO: Implement autoplay state
-                action: {
-                    // TODO: Toggle autoplay
-                }
-            )
-            
-            // Queue mode button (for now, just a visual toggle)
-            QueueControlButton(
-                icon: "quote.bubble",
-                isActive: false,
-                action: {
-                    // TODO: Toggle queue mode
                 }
             )
         }
@@ -61,6 +44,10 @@ struct QueueControlsView: View {
         }
     }
     
+    /// Cycle through repeat modes per spec section 6.7:
+    /// 1) リピート無し
+    /// 2) 今の曲をリピート
+    /// 3) キュー全体をリピート
     private func cycleRepeatMode() {
         switch model.controller.repeatMode {
         case .off:

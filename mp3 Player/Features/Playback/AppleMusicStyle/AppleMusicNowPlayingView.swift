@@ -28,7 +28,8 @@ struct AppleMusicNowPlayingView: View {
     }
 }
 
-/// Main view that switches between different states (S0-S4)
+/// Main view that switches between different states (S0-S4) with smooth transitions
+/// Per spec section 0: 状態切替は**スナップ＋アニメーション**で表現する
 private struct StatefulNowPlayingView: View {
     @Environment(NowPlayingAdapter.self) var model
     @Environment(\.dismiss) private var dismiss
@@ -55,8 +56,10 @@ private struct StatefulNowPlayingView: View {
                     isFullExpanded: true
                 )
                 
-                // State-based content
+                // State-based content with smooth transitions
+                // Per spec section 7: 状態遷移はアニメーションあり
                 stateContent(size: size, safeArea: safeArea)
+                    .animation(NowPlayingStateManager.transitionAnimation, value: model.stateManager.currentState)
             }
             .clipShape(RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous))
             .offset(y: offsetY)
@@ -76,27 +79,47 @@ private struct StatefulNowPlayingView: View {
     
     @ViewBuilder
     private func stateContent(size: CGSize, safeArea: EdgeInsets) -> some View {
-        switch model.stateManager.currentState {
-        case .standard:
-            StandardPlayerView(
-                stateManager: model.stateManager,
-                size: size,
-                safeArea: safeArea
-            )
+        // Use ZStack with transitions for smooth state changes
+        // Per spec section 0: 連続性（シームレスな切替）を重視
+        ZStack {
+            // S0: Standard
+            if model.stateManager.currentState == .standard {
+                StandardPlayerView(
+                    stateManager: model.stateManager,
+                    size: size,
+                    safeArea: safeArea
+                )
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                    removal: .opacity.combined(with: .scale(scale: 0.95))
+                ))
+            }
             
-        case .lyricsSmall, .lyricsLarge:
-            LyricsScreenView(
-                stateManager: model.stateManager,
-                size: size,
-                safeArea: safeArea
-            )
+            // S1/S2: Lyrics
+            if model.stateManager.isLyricsState {
+                LyricsScreenView(
+                    stateManager: model.stateManager,
+                    size: size,
+                    safeArea: safeArea
+                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .move(edge: .bottom).combined(with: .opacity)
+                ))
+            }
             
-        case .queueSmall, .queueReorderLarge:
-            QueueScreenView(
-                stateManager: model.stateManager,
-                size: size,
-                safeArea: safeArea
-            )
+            // S3/S4: Queue
+            if model.stateManager.isQueueState {
+                QueueScreenView(
+                    stateManager: model.stateManager,
+                    size: size,
+                    safeArea: safeArea
+                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .move(edge: .bottom).combined(with: .opacity)
+                ))
+            }
         }
     }
     

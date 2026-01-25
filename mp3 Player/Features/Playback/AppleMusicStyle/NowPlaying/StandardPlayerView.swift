@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Standard player view (S0 state)
-/// Full-size artwork with title/artist below and playback controls
+/// Per spec section 2.1: S0: 標準状態（現行）- 現在実装されている再生画面そのまま
 struct StandardPlayerView: View {
     @Environment(NowPlayingAdapter.self) var model
     let stateManager: NowPlayingStateManager
@@ -113,9 +113,11 @@ struct StandardPlayerView: View {
 
     private func footer(width: CGFloat) -> some View {
         HStack(alignment: .top, spacing: width * 0.18) {
-            // Lyrics button
+            // Lyrics button - per spec section 3.1: 歌詞ボタン押下 → S1
             Button {
-                stateManager.goToLyricsSmall()
+                withAnimation(NowPlayingStateManager.transitionAnimation) {
+                    stateManager.goToLyricsSmall()
+                }
             } label: {
                 Image(systemName: "quote.bubble")
                     .font(.title2)
@@ -128,12 +130,27 @@ struct StandardPlayerView: View {
                     .font(.caption)
             }
             
-            // Queue button
-            Button {
-                stateManager.goToQueueSmall()
-            } label: {
-                Image(systemName: "list.bullet")
-                    .font(.title2)
+            // Queue button - per spec section 3.1: キューボタン押下 → S3
+            // Per spec section 6.9: シャッフル/リピート状態は キューボタンに小さなアイコンで表示
+            ZStack(alignment: .topTrailing) {
+                Button {
+                    withAnimation(NowPlayingStateManager.transitionAnimation) {
+                        stateManager.goToQueueSmall()
+                    }
+                } label: {
+                    Image(systemName: "list.bullet")
+                        .font(.title2)
+                }
+                
+                // Show shuffle/repeat state indicator per spec section 6.9
+                if model.controller.isShuffleEnabled || model.controller.repeatMode != .off {
+                    Image(systemName: model.controller.isShuffleEnabled ? "shuffle" : "repeat")
+                        .font(.system(size: 8))
+                        .padding(3)
+                        .background(Color.white.opacity(0.2))
+                        .clipShape(Circle())
+                        .offset(x: 8, y: -4)
+                }
             }
         }
         .foregroundStyle(Color(Palette.playerCard.opaque))

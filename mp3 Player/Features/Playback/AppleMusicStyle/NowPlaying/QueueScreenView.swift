@@ -6,12 +6,11 @@
 import SwiftUI
 
 /// Queue screen view for states S3 (queue small) and S4 (queue reorder)
-/// Features:
-/// - Compact header with artwork + title/artist
-/// - Queue controls (shuffle, repeat, infinity, autoplay)
-/// - History section (visible at Snap A)
-/// - Now Playing + Up Next sections
-/// - Phase M/H scroll behavior with History Gate
+/// Per spec section 6.1, structure (top to bottom):
+/// 1) 履歴（History）
+/// 2) 縮小楽曲情報（CompactTrackInfo）- scrollable list item
+/// 3) キューコントロール（QueueControls）- sticky header
+/// 4) 現在のキュー（CurrentQueue）
 struct QueueScreenView: View {
     @Environment(NowPlayingAdapter.self) var model
     let stateManager: NowPlayingStateManager
@@ -19,7 +18,6 @@ struct QueueScreenView: View {
     var safeArea: EdgeInsets
     
     @State private var outerScrollOffset: CGFloat = 0
-    @State private var showHistory: Bool = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -27,19 +25,17 @@ struct QueueScreenView: View {
             grip
                 .padding(.top, safeArea.top)
             
-            // Compact Header
-            CompactHeader(stateManager: stateManager)
-            
-            // Queue Controls (sticky)
-            QueueControlsView()
-            
-            // Queue Content
+            // Queue Content with proper structure per spec
             queueContent
             
-            // Bottom controls
-            bottomControls
-                .padding(.bottom, safeArea.bottom)
+            // Bottom controls (shown in S3, hidden in S4 per spec section 4.2)
+            if stateManager.currentState == .queueSmall {
+                bottomControls
+                    .padding(.bottom, safeArea.bottom)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
+        .animation(NowPlayingStateManager.transitionAnimation, value: stateManager.currentState)
     }
     
     private var grip: some View {
@@ -53,19 +49,24 @@ struct QueueScreenView: View {
         GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 0, pinnedViews: []) {
-                        // History Section (Phase H / Snap A)
-                        if showHistory || stateManager.scrollPhase == .history {
+                    LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                        // History Section (visible when scrolled up per spec section 6.4)
+                        if stateManager.scrollPhase == .history {
                             historySection
                                 .id("history")
                         }
                         
-                        // Section header
-                        sectionHeader
-                            .id("nowPlaying")
+                        // CompactTrackInfo - part of scrollable list per spec section 1.1
+                        compactTrackInfoRow
+                            .id("compactTrackInfo")
                         
-                        // Up Next queue items
-                        upNextSection
+                        // QueueControls + CurrentQueue in a Section for sticky header per spec section 6.7
+                        Section {
+                            currentQueueSection
+                        } header: {
+                            QueueControlsView()
+                                .background(.ultraThinMaterial.opacity(0.5))
+                        }
                     }
                     .background(
                         GeometryReader { scrollGeo in
@@ -81,6 +82,51 @@ struct QueueScreenView: View {
                     outerScrollOffset = value
                     handleScrollChange(value)
                 }
+                .onAppear {
+                    // Per spec section 6.2: Initial position is Snap B (compactTrackInfo at top)
+                    proxy.scrollTo("compactTrackInfo", anchor: .top)
+                }
+            }
+        }
+    }
+    
+    /// Compact track info as a scrollable list item per spec section 1.1
+    private var compactTrackInfoRow: some View {
+        HStack(spacing: 12) {
+            // Artwork thumbnail (48x48)
+            ArtworkImageView(
+                artworkUri: model.display.artworkUri,
+                cornerRadius: 8,
+                contentMode: .fill
+            )
+            .frame(width: NowPlayingStateManager.compactArtworkSize, 
+                   height: NowPlayingStateManager.compactArtworkSize)
+            
+            // Title and Artist
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.display.title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color(Palette.playerCard.opaque))
+                    .lineLimit(1)
+                
+                if let subtitle = model.display.subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Color(Palette.playerCard.opaque).opacity(0.7))
+                        .lineLimit(1)
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, ViewConst.playerCardPaddings)
+        .frame(height: NowPlayingStateManager.compactHeaderHeight)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            // Tap to return to S0 per spec section 3.1
+            withAnimation(NowPlayingStateManager.transitionAnimation) {
+                stateManager.goToStandard()
             }
         }
     }
@@ -94,6 +140,7 @@ struct QueueScreenView: View {
                 
                 Spacer()
                 
+                // Per spec section 6.6: 操作：全消去のみ
                 Button("消去") {
                     // Clear history action
                 }
@@ -103,56 +150,84 @@ struct QueueScreenView: View {
             .padding(.horizontal, ViewConst.playerCardPaddings)
             .padding(.vertical, 12)
             
-            // History items (mock data for now - would come from PlaybackController)
-            ForEach(0..<5, id: \.self) { index in
+            // History items (would come from PlaybackController)
+            // Per spec section 6.10: 履歴空：空表示（セクションは表示）
+            ForEach(0..<3, id: \.self) { index in
                 QueueItemRowView(
                     item: mockHistoryItem(index: index),
                     isCurrentlyPlaying: false,
                     showsDragHandle: false,
+                    onDragStart: {},
+                    onDragEnd: {},
                     onTap: {}
                 )
             }
         }
     }
     
-    private var sectionHeader: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("再生を続ける")
-                .font(.headline)
-                .foregroundStyle(Color(Palette.playerCard.opaque))
+    private var currentQueueSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Section header per spec section 6.8: ラベルに追加元を付記
+            VStack(alignment: .leading, spacing: 4) {
+                Text("次に再生")
+                    .font(.headline)
+                    .foregroundStyle(Color(Palette.playerCard.opaque))
+                
+                if let album = model.currentItem?.album {
+                    Text("再生元: \(album)")
+                        .font(.caption)
+                        .foregroundStyle(Color(Palette.playerCard.opaque).opacity(0.6))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, ViewConst.playerCardPaddings)
+            .padding(.vertical, 12)
             
-            if let source = model.currentItem?.artist {
-                Text("再生元: \(source)")
-                    .font(.caption)
-                    .foregroundStyle(Color(Palette.playerCard.opaque).opacity(0.6))
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, ViewConst.playerCardPaddings)
-        .padding(.vertical, 12)
-    }
-    
-    private var upNextSection: some View {
-        ForEach(Array(model.controller.queueItems.enumerated()), id: \.element.id) { index, item in
-            QueueItemRowView(
-                item: item,
-                isCurrentlyPlaying: item.id == model.currentItem?.id,
-                showsDragHandle: stateManager.isQueueEditMode,
-                onTap: {
-                    // Tap on queue item - could show context menu or highlight
-                    // Queue items are "up next" - they'll play when current finishes
+            // Queue items per spec section 6.8
+            // Per spec section 6.10: キュー空：キューが空です
+            if model.controller.queueItems.isEmpty {
+                Text("キューが空です")
+                    .font(.body)
+                    .foregroundStyle(Color(Palette.playerCard.opaque).opacity(0.5))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+            } else {
+                ForEach(Array(model.controller.queueItems.enumerated()), id: \.element.id) { index, item in
+                    QueueItemRowView(
+                        item: item,
+                        isCurrentlyPlaying: false, // Current item is shown in compactTrackInfo per spec
+                        showsDragHandle: true, // Always show drag handle per spec section 6.8
+                        onDragStart: {
+                            // S3 → S4 on drag start per spec section 3.3
+                            if stateManager.currentState == .queueSmall {
+                                withAnimation(NowPlayingStateManager.transitionAnimation) {
+                                    stateManager.goToQueueReorder()
+                                }
+                            }
+                        },
+                        onDragEnd: {
+                            // S4 → S3 on drag end per spec section 3.3
+                            if stateManager.currentState == .queueReorderLarge {
+                                withAnimation(NowPlayingStateManager.transitionAnimation) {
+                                    stateManager.goToQueueSmall()
+                                }
+                            }
+                        },
+                        onTap: {}
+                    )
+                    // Per spec section 6.8: 左スワイプ削除：確認なし（即時削除）
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            model.controller.removeFromQueue(at: index)
+                        } label: {
+                            Label("削除", systemImage: "trash")
+                        }
+                    }
                 }
-            )
-            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                Button(role: .destructive) {
-                    model.controller.removeFromQueue(at: index)
-                } label: {
-                    Label("Remove", systemImage: "trash")
+                .onMove { fromOffsets, toOffset in
+                    model.controller.moveQueue(fromOffsets: fromOffsets, toOffset: toOffset)
                 }
             }
-        }
-        .onMove { fromOffsets, toOffset in
-            model.controller.moveQueue(fromOffsets: fromOffsets, toOffset: toOffset)
         }
     }
     
@@ -180,7 +255,9 @@ struct QueueScreenView: View {
         HStack(alignment: .top, spacing: size.width * 0.18) {
             // Lyrics button
             Button {
-                stateManager.goToLyricsSmall()
+                withAnimation(NowPlayingStateManager.transitionAnimation) {
+                    stateManager.goToLyricsSmall()
+                }
             } label: {
                 Image(systemName: "quote.bubble")
                     .font(.title2)
@@ -191,30 +268,43 @@ struct QueueScreenView: View {
                 AirPlayButton()
             }
             
-            // Queue button (active)
-            Button {
-                stateManager.toggleQueue()
-            } label: {
-                Image(systemName: "list.bullet")
-                    .font(.title2)
-                    .padding(8)
-                    .background(Color.white.opacity(0.2))
-                    .clipShape(Circle())
+            // Queue button (active state) with state indicator per spec section 6.9
+            ZStack(alignment: .topTrailing) {
+                Button {
+                    withAnimation(NowPlayingStateManager.transitionAnimation) {
+                        stateManager.toggleQueue()
+                    }
+                } label: {
+                    Image(systemName: "list.bullet")
+                        .font(.title2)
+                        .padding(8)
+                        .background(Color.white.opacity(0.2))
+                        .clipShape(Circle())
+                }
+                
+                // Show shuffle/repeat indicator per spec section 6.9
+                if model.controller.isShuffleEnabled || model.controller.repeatMode != .off {
+                    Image(systemName: model.controller.isShuffleEnabled ? "shuffle" : "repeat")
+                        .font(.system(size: 8))
+                        .padding(3)
+                        .background(Color.white.opacity(0.3))
+                        .clipShape(Circle())
+                        .offset(x: 12, y: -4)
+                }
             }
         }
         .foregroundStyle(Color(Palette.playerCard.opaque))
         .blendMode(.overlay)
     }
     
-    // MARK: - Scroll Handling
+    // MARK: - Scroll Handling per spec section 6.4-6.5
     
     private func handleScrollChange(_ offset: CGFloat) {
-        // History Gate logic
+        // History Gate logic per spec section 6.5
         if stateManager.scrollPhase == .main {
             if offset < -NowPlayingStateManager.historyGateThreshold {
-                // Passed threshold - show history
+                // Passed threshold - switch to Phase H
                 withAnimation(NowPlayingStateManager.transitionAnimation) {
-                    showHistory = true
                     stateManager.scrollPhase = .history
                     stateManager.snapPosition = .snapA
                 }
@@ -225,20 +315,17 @@ struct QueueScreenView: View {
     // MARK: - Mock Data
     
     private func mockHistoryItem(index: Int) -> PlaybackItem {
-        // This would normally come from playback history
-        // For now, return current item as placeholder
         if let current = model.currentItem {
             return current
         }
-        // Create a mock item if no current item
         return PlaybackItem(
             id: Int64(index),
             source: .local,
             sourceTrackId: "history-\(index)",
             fileUri: nil,
             artworkUri: nil,
-            title: "History Track \(index)",
-            artist: "Artist",
+            title: "履歴トラック \(index + 1)",
+            artist: "アーティスト",
             album: nil,
             duration: 180,
             artistId: nil
@@ -246,12 +333,16 @@ struct QueueScreenView: View {
     }
 }
 
-/// Individual queue item row
+/// Individual queue item row with drag handle support
 struct QueueItemRowView: View {
     let item: PlaybackItem
     let isCurrentlyPlaying: Bool
     var showsDragHandle: Bool = false
+    var onDragStart: () -> Void
+    var onDragEnd: () -> Void
     var onTap: () -> Void
+    
+    @State private var hasDragStarted: Bool = false
     
     var body: some View {
         HStack(spacing: 12) {
@@ -281,12 +372,26 @@ struct QueueItemRowView: View {
             
             Spacer()
             
-            // Drag handle (shown in S4 edit mode)
+            // Drag handle per spec section 6.8: 並び替え：常に可能（Reorder handle）
             if showsDragHandle {
                 Image(systemName: "line.3.horizontal")
                     .font(.body)
                     .foregroundStyle(Color(Palette.playerCard.opaque).opacity(0.5))
                     .padding(.trailing, 4)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { _ in
+                                // Only call onDragStart once when drag begins
+                                if !hasDragStarted {
+                                    hasDragStarted = true
+                                    onDragStart()
+                                }
+                            }
+                            .onEnded { _ in
+                                hasDragStarted = false
+                                onDragEnd()
+                            }
+                    )
             }
         }
         .padding(.horizontal, ViewConst.playerCardPaddings)
