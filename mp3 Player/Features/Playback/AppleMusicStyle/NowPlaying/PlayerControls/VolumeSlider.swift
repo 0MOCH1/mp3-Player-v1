@@ -7,29 +7,115 @@
 
 import SwiftUI
 import MediaPlayer
+import AVFoundation
 
-/// System volume slider using MPVolumeView for device volume control
-public struct VolumeSlider: UIViewRepresentable {
+public struct VolumeSlider: View {
+    @Environment(NowPlayingAdapter.self) var model
+    @State var volume: Double = 0.5
+    @State var minVolumeAnimationTrigger: Bool = false
+    @State var maxVolumeAnimationTrigger: Bool = false
+    let range = 0.0 ... 1
+
+    public var body: some View {
+        ZStack {
+            // Hidden MPVolumeView for system volume control
+            SystemVolumeSlider(volume: $volume)
+                .frame(width: 0, height: 0)
+                .opacity(0)
+            
+            // Custom visual slider synced with system volume
+            ElasticSlider(
+                value: $volume,
+                in: range,
+                leadingLabel: {
+                    Image(systemName: "speaker.fill")
+                        .padding(.trailing, 10)
+                        .symbolEffect(.bounce, value: minVolumeAnimationTrigger)
+                },
+                trailingLabel: {
+                    Image(systemName: "speaker.wave.3.fill")
+                        .padding(.leading, 10)
+                        .symbolEffect(.bounce, value: maxVolumeAnimationTrigger)
+                }
+            )
+            .sliderStyle(.volume)
+            .font(.system(size: 14))
+            .onChange(of: volume) { oldValue, newValue in
+                if newValue == range.lowerBound {
+                    minVolumeAnimationTrigger.toggle()
+                }
+                if newValue == range.upperBound {
+                    maxVolumeAnimationTrigger.toggle()
+                }
+            }
+            .frame(height: 50)
+        }
+    }
+}
+
+/// Hidden system volume view that syncs with the custom slider
+struct SystemVolumeSlider: UIViewRepresentable {
+    @Binding var volume: Double
     
-    public func makeUIView(context: Context) -> MPVolumeView {
+    func makeUIView(context: Context) -> MPVolumeView {
         let volumeView = MPVolumeView(frame: .zero)
         volumeView.showsVolumeSlider = true
-        // Hide route button - we use separate AirPlayButton
         volumeView.setRouteButtonImage(UIImage(), for: .normal)
+        volumeView.isHidden = true
         
-        // Style the slider to match the player design
-        volumeView.tintColor = Palette.PlayerCard.opaque
-        
-        // Find and style the slider
+        // Get the slider and observe its value
         if let slider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider {
-            slider.minimumTrackTintColor = Palette.PlayerCard.opaque.withAlphaComponent(0.8)
-            slider.maximumTrackTintColor = Palette.PlayerCard.translucent.withAlphaComponent(0.3)
-            slider.thumbTintColor = Palette.PlayerCard.opaque
+            slider.addTarget(context.coordinator, action: #selector(Coordinator.sliderValueChanged(_:)), for: .valueChanged)
+            // Initialize with current system volume
+            DispatchQueue.main.async {
+                volume = Double(slider.value)
+            }
         }
         
         return volumeView
     }
     
-    public func updateUIView(_ uiView: MPVolumeView, context: Context) {}
+    func updateUIView(_ uiView: MPVolumeView, context: Context) {
+        // Update the system slider when our binding changes
+        if let slider = uiView.subviews.first(where: { $0 is UISlider }) as? UISlider {
+            if abs(Double(slider.value) - volume) > 0.01 {
+                slider.value = Float(volume)
+                // Trigger the volume change
+                slider.sendActions(for: .valueChanged)
+            }
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(volume: $volume)
+    }
+    
+    class Coordinator: NSObject {
+        var volume: Binding<Double>
+        
+        init(volume: Binding<Double>) {
+            self.volume = volume
+        }
+        
+        @objc func sliderValueChanged(_ slider: UISlider) {
+            DispatchQueue.main.async {
+                self.volume.wrappedValue = Double(slider.value)
+            }
+        }
+    }
+}
+
+extension ElasticSliderConfig {
+    static var volume: Self {
+        Self(
+            labelLocation: .side,
+            maxStretch: 10,
+            minimumTrackActiveColor: Color(Palette.PlayerCard.opaque),
+            minimumTrackInactiveColor: Color(Palette.PlayerCard.translucent),
+            maximumTrackColor: Color(Palette.PlayerCard.translucent),
+            blendMode: .overlay,
+            syncLabelsStyle: true
+        )
+    }
 }
 
