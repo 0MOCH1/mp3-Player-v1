@@ -10,20 +10,30 @@ import SwiftUI
 struct PlayerControls: View {
     @Environment(NowPlayingAdapter.self) var model
     @State private var volume: Double = 0.5
+    var stateManager: NowPlayingStateManager? = nil
+    var showTrackInfo: Bool = true
 
     var body: some View {
         GeometryReader {
             let size = $0.size
             let spacing = size.verticalSpacing
             VStack(spacing: 0) {
-                VStack(spacing: spacing) {
-                    trackInfo
+                if showTrackInfo {
+                    VStack(spacing: spacing) {
+                        trackInfo
+                        let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
+                        TimingIndicator(spacing: spacing)
+                            .padding(.top, spacing)
+                            .padding(.horizontal, indicatorPadding)
+                    }
+                    .frame(height: size.height / 2.5, alignment: .top)
+                } else {
+                    // When track info is hidden, just show timing indicator
                     let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
                     TimingIndicator(spacing: spacing)
-                        .padding(.top, spacing)
                         .padding(.horizontal, indicatorPadding)
+                        .frame(height: size.height / 4, alignment: .bottom)
                 }
-                .frame(height: size.height / 2.5, alignment: .top)
                 PlayerButtons(spacing: size.width * 0.14)
                     .padding(.horizontal, ViewConst.playerCardPaddings)
                 volume(playerSize: size)
@@ -80,10 +90,25 @@ private extension PlayerControls {
 
     func footer(width: CGFloat) -> some View {
         HStack(alignment: .top, spacing: width * 0.18) {
-            Button {} label: {
-                Image(systemName: "quote.bubble")
-                    .font(.title2)
+            // Lyrics button (per spec 3.1)
+            Button {
+                stateManager?.toggleLyrics()
+            } label: {
+                ZStack {
+                    Image(systemName: "quote.bubble")
+                        .font(.title2)
+                    
+                    // Active indicator when in lyrics mode
+                    if stateManager?.isLyricsMode == true {
+                        Circle()
+                            .fill(Color(palette.opaque))
+                            .frame(width: 6, height: 6)
+                            .offset(x: 12, y: -12)
+                    }
+                }
             }
+            
+            // AirPlay button
             VStack(spacing: 6) {
                 Button {} label: {
                     Image(systemName: "airpods.gen3")
@@ -92,9 +117,28 @@ private extension PlayerControls {
                 Text("iPhone's Airpods")
                     .font(.caption)
             }
-            Button {} label: {
-                Image(systemName: "list.bullet")
-                    .font(.title2)
+            
+            // Queue button (per spec 3.1, 6.9)
+            Button {
+                stateManager?.toggleQueue()
+            } label: {
+                ZStack {
+                    Image(systemName: "list.bullet")
+                        .font(.title2)
+                    
+                    // Show shuffle/repeat state on queue button (per spec 6.9)
+                    if stateManager != nil {
+                        if model.controller.isShuffleEnabled {
+                            Image(systemName: "shuffle")
+                                .font(.caption2)
+                                .offset(x: 10, y: -10)
+                        } else if model.controller.repeatMode != .off {
+                            Image(systemName: model.controller.repeatMode == .one ? "repeat.1" : "repeat")
+                                .font(.caption2)
+                                .offset(x: 10, y: -10)
+                        }
+                    }
+                }
             }
         }
         .foregroundStyle(Color(palette.opaque))
