@@ -87,7 +87,7 @@ private struct QueueItemRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            if let artworkUri = item.track.artworkUri {
+            if let artworkUri = item.artworkUri {
                 ArtworkImageView(artworkUri: artworkUri, cornerRadius: 4, contentMode: .fill)
                     .frame(width: 50, height: 50)
             } else {
@@ -101,13 +101,13 @@ private struct QueueItemRow: View {
             }
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(item.track.title)
+                Text(item.title)
                     .font(.body)
                     .fontWeight(isCurrentlyPlaying ? .semibold : .regular)
                     .foregroundColor(isCurrentlyPlaying ? .accentColor : .primary)
                     .lineLimit(1)
                 
-                if let artist = item.track.artist {
+                if let artist = item.artist {
                     Text(artist)
                         .font(.caption)
                         .foregroundColor(.secondary)

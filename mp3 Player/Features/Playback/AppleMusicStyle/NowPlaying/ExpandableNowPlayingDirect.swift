@@ -23,7 +23,7 @@ struct ExpandableNowPlayingDirect: View {
             // Calculate progressive corner radius based on drag amount
             // Reaches full device corner radius at 20pt of drag
             let dragProgress = min(offsetY / 20.0, 1.0)
-            let targetCornerRadius = dragProgress * deviceCornerRadius
+            let _ = dragProgress * deviceCornerRadius
 
             ZStack(alignment: .top) {
                 NowPlayingBackground(
