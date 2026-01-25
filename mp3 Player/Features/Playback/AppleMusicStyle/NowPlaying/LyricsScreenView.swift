@@ -78,10 +78,11 @@ struct LyricsScreenView: View {
                 let delta = value - lastScrollOffset
                 scrollOffset = value
                 
-                // Handle snap between S1 and S2
-                if stateManager.currentState == .lyricsSmall && delta < -100 {
+                // Handle snap between S1 and S2 using the constant threshold
+                let threshold = NowPlayingStateManager.lyricsSnapThreshold
+                if stateManager.currentState == .lyricsSmall && delta < -threshold {
                     stateManager.goToLyricsLarge()
-                } else if stateManager.currentState == .lyricsLarge && delta > 100 {
+                } else if stateManager.currentState == .lyricsLarge && delta > threshold {
                     stateManager.goToLyricsSmall()
                 }
                 

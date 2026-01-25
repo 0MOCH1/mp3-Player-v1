@@ -55,6 +55,9 @@ class NowPlayingStateManager {
     /// Threshold for History Gate (120pt)
     static let historyGateThreshold: CGFloat = 120
     
+    /// Threshold for lyrics screen snap transitions (S1 ↔ S2)
+    static let lyricsSnapThreshold: CGFloat = 100
+    
     /// Height of compact header
     static let compactHeaderHeight: CGFloat = 48
     
@@ -205,7 +208,8 @@ class NowPlayingStateManager {
     }
     
     /// Handle lyrics scroll for S1 ↔ S2 snap transitions
-    func handleLyricsScrollChange(_ offset: CGFloat, threshold: CGFloat = 100) {
+    func handleLyricsScrollChange(_ offset: CGFloat) {
+        let threshold = Self.lyricsSnapThreshold
         if currentState == .lyricsSmall && offset > threshold {
             goToLyricsLarge()
         } else if currentState == .lyricsLarge && offset < -threshold {
