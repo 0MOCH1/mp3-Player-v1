@@ -13,6 +13,9 @@ class NowPlayingAdapter {
     let controller: PlaybackController
     var colors: [ColorFrequency] = []
     
+    /// State manager for handling S0-S4 states and scroll phases
+    let stateManager = NowPlayingStateManager()
+    
     // Mirror controller properties for observation
     private(set) var state: PlaybackState = .stopped
     private(set) var currentItem: PlaybackItem?
