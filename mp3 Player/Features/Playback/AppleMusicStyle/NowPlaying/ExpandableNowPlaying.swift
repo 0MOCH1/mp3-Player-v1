@@ -81,11 +81,12 @@ private extension ExpandableNowPlaying {
             .padding(.bottom, expanded ? 0 : safeArea.bottom + ViewConst.compactNowPlayingHeight)
             .padding(.horizontal, expanded ? 0 : 12)
             .offset(y: offsetY)
-            .gesture(
-                expanded ? PanGesture(
+            .conditionalGesture(
+                expanded: expanded,
+                gesture: PanGesture(
                     onChange: { handleGestureChange(value: $0, viewSize: size) },
                     onEnd: { handleGestureEnd(value: $0, viewSize: size) }
-                ) : nil
+                )
             )
             .ignoresSafeArea()
         }
@@ -195,6 +196,18 @@ private extension UIWindow {
     private func resetStacked() {
         layer.cornerRadius = 0.0
         transform = .identity
+    }
+}
+
+// Helper extension to conditionally apply gesture
+private extension View {
+    @ViewBuilder
+    func conditionalGesture(expanded: Bool, gesture: PanGesture) -> some View {
+        if expanded {
+            self.gesture(gesture)
+        } else {
+            self
+        }
     }
 }
 
