@@ -30,9 +30,10 @@ struct PlayerControls: View {
                         .padding(.horizontal, indicatorPadding)
                 }
                 .frame(height: size.height / 2.5, alignment: .top)
-                // Player buttons with increased spacing for wider controls
+                // Player buttons with increased spacing (+5pt from seek bar)
                 PlayerButtons(spacing: size.width * 0.14 + 10)
                     .padding(.horizontal, ViewConst.playerCardPaddings)
+                    .padding(.top, 5)
                 volume(playerSize: size)
                     .frame(height: size.height / 2.5, alignment: .bottom)
             }
@@ -79,15 +80,16 @@ private extension PlayerControls {
     }
 
     func volume(playerSize: CGSize) -> some View {
-        VStack(spacing: playerSize.verticalSpacing + 10) {
+        // Match seek bar to player buttons spacing: verticalSpacing+15
+        VStack(spacing: playerSize.verticalSpacing + 15) {
             VolumeSlider()
                 .padding(.horizontal, 8)
 
             footer(width: playerSize.width)
-                // Reduced spacing: verticalSpacing-30 (10pt closer)
-                .padding(.top, playerSize.verticalSpacing - 30)
-                // Reduced bottom padding to 25pt (10pt less)
-                .padding(.bottom, 25)
+                // 5pt closer: verticalSpacing-35
+                .padding(.top, playerSize.verticalSpacing - 35)
+                // 5pt less: 20pt
+                .padding(.bottom, 20)
                 .padding(.horizontal, ViewConst.playerCardPaddings)
         }
     }
@@ -114,13 +116,15 @@ private extension PlayerControls {
                 }
             }
             
-            // AirPlay button - using center alignment to ignore text height
+            // AirPlay button - using center alignment and proper color matching
             Button {
                 // AirPlay button action handled by AVRoutePickerView
             } label: {
                 VStack(spacing: 0) {
                     AirPlayButton()
                         .frame(height: 20)
+                        .colorMultiply(Color(palette.opaque)) // Match other button colors
+                        .blendMode(.overlay)
                 }
             }
             .disabled(true) // Disable button, let AVRoutePickerView handle interaction

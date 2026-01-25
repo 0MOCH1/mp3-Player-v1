@@ -34,8 +34,8 @@ struct PlayerButtons: View {
 
             PlayerButton(
                 label: {
-                    // Changed from imageSize+8 (48) to imageSize+4 (44) - just slightly larger
-                    PlayerButtonLabel(type: model.playPauseButton, size: imageSize + 4)
+                    // Reduced to imageSize (40pt) - same as skip buttons for minimal difference
+                    PlayerButtonLabel(type: model.playPauseButton, size: imageSize)
                 },
                 onEnded: {
                     model.onPlayPause()
