@@ -11,6 +11,7 @@ struct ExpandableNowPlayingDirect: View {
     @Environment(NowPlayingAdapter.self) var model
     @State private var offsetY: CGFloat = 0.0
     @State private var expandProgress: CGFloat = 1.0
+    @State private var deviceCornerRadius: CGFloat = 39.0
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
@@ -31,7 +32,7 @@ struct ExpandableNowPlayingDirect: View {
                     safeArea: safeArea
                 )
             }
-            .clipShape(RoundedRectangle(cornerRadius: isDragging ? 20 : 0))
+            .clipShape(RoundedRectangle(cornerRadius: isDragging ? deviceCornerRadius : 0, style: .continuous))
             .offset(y: offsetY)
             .gesture(
                 DragGesture(minimumDistance: 20)
@@ -60,6 +61,11 @@ struct ExpandableNowPlayingDirect: View {
         .background(Color.clear) // Transparent background
         .onAppear {
             model.onAppear()
+            // Get the device's actual corner radius
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let screen = windowScene.screen as UIScreen? {
+                deviceCornerRadius = screen.displayCornerRadius
+            }
         }
     }
 }
