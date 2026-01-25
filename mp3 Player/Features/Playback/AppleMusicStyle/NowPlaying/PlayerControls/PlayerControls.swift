@@ -95,18 +95,20 @@ private extension PlayerControls {
             } label: {
                 ZStack {
                     if stateManager?.isLyricsMode == true {
-                        // Active state: filled circle with icon cutout
+                        // Active state: filled circle with icon
                         Circle()
                             .fill(Color(palette.opaque))
                             .frame(width: 28, height: 28)
                         Image(systemName: "quote.bubble.fill")
                             .font(.body)
-                            .foregroundStyle(Color.black.opacity(0.3))
+                            .foregroundStyle(Color(palette.opaque).opacity(0.15))
+                            .blendMode(.destinationOut)
                     } else {
                         Image(systemName: "quote.bubble")
                             .font(.title2)
                     }
                 }
+                .compositingGroup()
             }
             // AirPlay button - without static label
             VStack(spacing: 6) {
@@ -119,13 +121,14 @@ private extension PlayerControls {
             } label: {
                 ZStack {
                     if stateManager?.isQueueMode == true {
-                        // Active state: filled circle with icon cutout
+                        // Active state: filled circle with icon
                         Circle()
                             .fill(Color(palette.opaque))
                             .frame(width: 28, height: 28)
                         Image(systemName: "list.bullet")
                             .font(.body)
-                            .foregroundStyle(Color.black.opacity(0.3))
+                            .foregroundStyle(Color(palette.opaque).opacity(0.15))
+                            .blendMode(.destinationOut)
                     } else {
                         Image(systemName: "list.bullet")
                             .font(.title2)
@@ -143,6 +146,7 @@ private extension PlayerControls {
                         }
                     }
                 }
+                .compositingGroup()
             }
         }
         .foregroundStyle(Color(palette.opaque))

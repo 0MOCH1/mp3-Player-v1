@@ -91,15 +91,13 @@ struct QueueToggleButton: View {
                         .frame(width: 36, height: 36)
                 }
                 
-                // Icon - filled version for active, regular for inactive
+                // Icon - blend mode creates cutout effect on circle
                 Image(systemName: isActive ? iconActive : iconNormal)
                     .font(.body.weight(.medium))
-                    .foregroundStyle(
-                        isActive
-                            ? Color(Palette.PlayerCard.opaque).opacity(0.1) // Dark for contrast on light circle
-                            : Color(Palette.PlayerCard.opaque).opacity(0.6)
-                    )
+                    .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(isActive ? 0.15 : 0.6))
+                    .blendMode(isActive ? .destinationOut : .normal)
             }
+            .compositingGroup()
             .frame(maxWidth: .infinity)
             .frame(height: 36)
         }

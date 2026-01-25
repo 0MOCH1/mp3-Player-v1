@@ -109,10 +109,13 @@ struct QueueScreenView: View {
             .environment(\.editMode, .constant(stateManager.isQueueEditMode ? .active : .inactive))
             .onAppear {
                 loadHistory()
-                // Per spec 6.2: Scroll to Snap B immediately on appear
+                // Per spec 6.2: Scroll to Snap B on appear
+                // Dispatch to main queue to ensure List is fully rendered
                 if !didScrollToInitial {
-                    proxy.scrollTo(compactAnchorID, anchor: .top)
-                    didScrollToInitial = true
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(compactAnchorID, anchor: .top)
+                        didScrollToInitial = true
+                    }
                 }
             }
             .onChange(of: stateManager.snapPosition) { _, newPosition in
