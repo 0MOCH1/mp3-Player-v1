@@ -137,18 +137,27 @@ struct QueueScreenView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 40)
         } else {
-            // Queue items list
+            // Queue items list with reorder support
+            // Per spec 3.3: Reorder handle drag starts S4, finger release returns to S3
             ForEach(Array(upNextItems.enumerated()), id: \.element.id) { index, item in
                 QueueItemRow(
                     item: item,
                     isEditMode: stateManager.isQueueEditMode,
                     onDelete: {
                         deleteQueueItem(at: currentIndex + 1 + index)
+                    },
+                    onReorderStart: {
+                        stateManager.enterQueueReorderMode()
+                    },
+                    onReorderEnd: {
+                        stateManager.exitQueueReorderMode()
                     }
                 )
             }
             .onMove { fromOffsets, toOffset in
                 moveQueueItems(fromOffsets: fromOffsets, toOffset: toOffset, baseIndex: currentIndex + 1)
+                // Per spec 3.3: Finger release returns to S3
+                stateManager.exitQueueReorderMode()
             }
         }
     }
@@ -231,6 +240,10 @@ struct QueueItemRow: View {
     let item: PlaybackItem
     let isEditMode: Bool
     let onDelete: () -> Void
+    var onReorderStart: (() -> Void)? = nil
+    var onReorderEnd: (() -> Void)? = nil
+    
+    @GestureState private var isDragging = false
     
     var body: some View {
         HStack(spacing: 12) {
@@ -265,12 +278,10 @@ struct QueueItemRow: View {
             
             Spacer()
             
-            if isEditMode {
-                // Reorder handle for S4 (per spec 6.8)
-                Image(systemName: "line.3.horizontal")
-                    .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.5))
-                    .padding(.trailing, 4)
-            }
+            // Reorder handle always visible (per spec 6.8: 並び替え：常に可能)
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(isEditMode ? 0.8 : 0.5))
+                .padding(.trailing, 4)
         }
         .padding(.horizontal, ViewConst.playerCardPaddings)
         .padding(.vertical, 8)
