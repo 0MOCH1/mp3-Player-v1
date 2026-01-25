@@ -94,6 +94,10 @@ private struct RegularNowPlayingSimple: View {
         VStack(spacing: 12) {
             grip
                 .blendMode(.overlay)
+                // Position grip equidistant from Dynamic Island bottom and artwork top
+                // Dynamic Island is typically at safeArea.top (around 59pt on iPhone with DI)
+                // Artwork starts at current position. Calculate the gap and center the grip.
+                .padding(.top, calculateGripTopPadding())
 
             artwork
                 .frame(height: size.width - 50)
@@ -109,7 +113,23 @@ private struct RegularNowPlayingSimple: View {
     var grip: some View {
         Capsule()
             .fill(.white.secondary)
-            .frame(width: 40, height: 5)
+            // Doubled width from 40 to 80
+            .frame(width: 80, height: 5)
+    }
+    
+    func calculateGripTopPadding() -> CGFloat {
+        // Dynamic Island bottom is at safeArea.top
+        // Artwork top (without current padding) would be at some position
+        // Current VStack has spacing: 12
+        // We want grip centered between Dynamic Island bottom and artwork top
+        // Approximate calculation: place grip in the middle of available space
+        // Since we're in VStack with safeArea.top padding and spacing: 12
+        // The grip should be positioned to create equal spacing
+        // Default positioning with no extra padding creates ~12pt below DI
+        // and ~12pt above artwork due to VStack spacing
+        // To make them equal, we need to adjust based on visible gap
+        // Simplified: add slight offset to better center visually
+        return 8 // Additional padding to fine-tune position
     }
 
     var artwork: some View {

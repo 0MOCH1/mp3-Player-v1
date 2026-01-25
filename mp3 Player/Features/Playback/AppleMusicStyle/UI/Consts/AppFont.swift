@@ -6,7 +6,8 @@
 import SwiftUI
 
 enum AppFont {
-    static let timingIndicator: Font = .system(size: 12, weight: .semibold)
+    // Reduced from size 12 to 10, weight from semibold to regular
+    static let timingIndicator: Font = .system(size: 10, weight: .regular)
     static let miniPlayerTitle: Font = .system(size: 15, weight: .medium)
     static let button: Font = .system(size: 17, weight: .semibold)
     static let mediaListHeaderTitle: Font = .system(size: 20, weight: .semibold)

@@ -12,6 +12,9 @@ struct PlayerControls: View {
     @State private var volume: Double = 0.5
     @State private var showLyrics = false
     @State private var showQueue = false
+    // Toggle states for lyrics and queue buttons
+    @State private var lyricsToggled = false
+    @State private var queueToggled = false
 
     var body: some View {
         GeometryReader {
@@ -48,14 +51,15 @@ private extension PlayerControls {
 
     var trackInfo: some View {
         HStack(alignment: .center, spacing: 15) {
-            VStack(alignment: .leading, spacing: 4) {
+            // Reduced VStack spacing from 4 to -1 (5pt reduction)
+            VStack(alignment: .leading, spacing: -1) {
                 let fade = ViewConst.playerCardPaddings
                 let cfg = MarqueeText.Config(leftFade: fade, rightFade: fade)
-                // Title: title2, bold
+                // Title: title2, semibold (changed from bold)
                 MarqueeText(model.display.title, config: cfg)
                     .transformEffect(.identity)
                     .font(.title2)
-                    .fontWeight(.bold)
+                    .fontWeight(.semibold)
                     .foregroundStyle(Color(palette.opaque))
                     .id(model.display.title)
                     .allowsHitTesting(false)
@@ -80,27 +84,25 @@ private extension PlayerControls {
                 .padding(.horizontal, 8)
 
             footer(width: playerSize.width)
-                // Reduced spacing from verticalSpacing to verticalSpacing-20
-                .padding(.top, playerSize.verticalSpacing - 20)
-                // Increased bottom padding by 15pt
-                .padding(.bottom, 15)
+                // Reduced spacing to verticalSpacing-40 (20pt more reduction)
+                .padding(.top, playerSize.verticalSpacing - 40)
+                // Increased bottom padding by 35pt total (was 15, now 35 for +20)
+                .padding(.bottom, 35)
                 .padding(.horizontal, ViewConst.playerCardPaddings)
         }
     }
 
     func footer(width: CGFloat) -> some View {
-        // Reduced spacing from 0.18 to 0.12 for tighter button arrangement
-        HStack(alignment: .center, spacing: width * 0.12) {
-            // Lyrics button
+        // Fixed spacing of 60pt between buttons
+        HStack(alignment: .center, spacing: 60) {
+            // Lyrics button - toggles state on tap, no sheet
             Button {
-                showLyrics = true
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    lyricsToggled.toggle()
+                }
             } label: {
-                Image(systemName: "quote.bubble")
+                Image(systemName: lyricsToggled ? "quote.bubble.fill" : "quote.bubble")
                     .font(.system(size: 20, weight: .semibold))
-            }
-            .sheet(isPresented: $showLyrics) {
-                LyricsView()
-                    .environment(model)
             }
             
             // AirPlay button - using center alignment to ignore text height
@@ -114,16 +116,14 @@ private extension PlayerControls {
             }
             .disabled(true) // Disable button, let AVRoutePickerView handle interaction
             
-            // Queue button
+            // Queue button - toggles state on tap, no sheet
             Button {
-                showQueue = true
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    queueToggled.toggle()
+                }
             } label: {
-                Image(systemName: "list.bullet")
+                Image(systemName: queueToggled ? "list.bullet.circle.fill" : "list.bullet")
                     .font(.system(size: 20, weight: .semibold))
-            }
-            .sheet(isPresented: $showQueue) {
-                QueueView()
-                    .environment(model)
             }
         }
         .foregroundStyle(Color(palette.opaque))
