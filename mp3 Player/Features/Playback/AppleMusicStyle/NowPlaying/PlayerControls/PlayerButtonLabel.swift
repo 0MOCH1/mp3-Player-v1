@@ -35,14 +35,17 @@ struct PlayerButtonLabel: View {
         switch type {
         case .forward:
             AnimatedForwardLabel(size: size, trigger: animationTrigger)
+                .fontWeight(.bold)
         case .backward:
             AnimatedForwardLabel(size: size, trigger: animationTrigger)
                 .scaleEffect(x: -1)
+                .fontWeight(.bold)
         default:
             Image(systemName: type.systemImageName)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: size, height: size)
+                .fontWeight(.bold)
         }
     }
 }
@@ -90,6 +93,7 @@ private struct Label: View {
         Image(systemName: "play.fill")
             .resizable()
             .aspectRatio(contentMode: .fit)
+            .fontWeight(.bold)
     }
 }
 

@@ -10,12 +10,14 @@ import SwiftUI
 struct PlayerButtons: View {
     @Environment(NowPlayingAdapter.self) var model
     let spacing: CGFloat
-    let imageSize: CGFloat = 34
+    // Increased from 34 to 40 for larger icons
+    let imageSize: CGFloat = 40
     @State var backwardAnimationTrigger: PlayerButtonTrigger = .one(bouncing: false)
     @State var forwardAnimationTrigger: PlayerButtonTrigger = .one(bouncing: false)
 
     var body: some View {
-        HStack(spacing: spacing) {
+        // Reduced spacing by 15pt as requested
+        HStack(spacing: max(spacing - 15, 0)) {
             PlayerButton(
                 label: {
                     PlayerButtonLabel(
@@ -32,7 +34,7 @@ struct PlayerButtons: View {
 
             PlayerButton(
                 label: {
-                    PlayerButtonLabel(type: model.playPauseButton, size: imageSize)
+                    PlayerButtonLabel(type: model.playPauseButton, size: imageSize + 8)
                 },
                 onEnded: {
                     model.onPlayPause()

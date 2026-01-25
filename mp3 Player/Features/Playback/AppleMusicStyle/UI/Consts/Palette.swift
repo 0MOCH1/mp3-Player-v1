@@ -60,7 +60,8 @@ extension Palette {
 
 extension Palette.PlayerCard {
     static let opaque: UIColor = .white
-    static let translucent: UIColor = .init(white: 0.784, alpha: 0.816)
+    // Brighter translucent for better visibility
+    static let translucent: UIColor = .init(white: 0.88, alpha: 0.88)
     static let artworkBackground: UIColor = .dynamic(
         light: Palette.platinum,
         dark: Palette.taupeGray

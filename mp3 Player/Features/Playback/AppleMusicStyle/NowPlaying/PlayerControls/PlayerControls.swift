@@ -22,11 +22,13 @@ struct PlayerControls: View {
                     trackInfo
                     let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
                     TimingIndicator(spacing: spacing)
-                        .padding(.top, spacing)
+                        // Reduced from spacing to spacing-10
+                        .padding(.top, spacing - 10)
                         .padding(.horizontal, indicatorPadding)
                 }
                 .frame(height: size.height / 2.5, alignment: .top)
-                PlayerButtons(spacing: size.width * 0.14)
+                // Player buttons with increased spacing for wider controls
+                PlayerButtons(spacing: size.width * 0.14 + 10)
                     .padding(.horizontal, ViewConst.playerCardPaddings)
                 volume(playerSize: size)
                     .frame(height: size.height / 2.5, alignment: .bottom)
@@ -49,15 +51,18 @@ private extension PlayerControls {
             VStack(alignment: .leading, spacing: 4) {
                 let fade = ViewConst.playerCardPaddings
                 let cfg = MarqueeText.Config(leftFade: fade, rightFade: fade)
+                // Title: title2, bold
                 MarqueeText(model.display.title, config: cfg)
                     .transformEffect(.identity)
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                    .font(.title2)
+                    .fontWeight(.bold)
                     .foregroundStyle(Color(palette.opaque))
                     .id(model.display.title)
                     .allowsHitTesting(false)
+                // Artist: title3
                 MarqueeText(model.display.subtitle ?? "", config: cfg)
                     .transformEffect(.identity)
+                    .font(.title3)
                     .foregroundStyle(Color(palette.opaque))
                     .blendMode(.overlay)
                     .id(model.display.subtitle)
@@ -70,43 +75,51 @@ private extension PlayerControls {
     }
 
     func volume(playerSize: CGSize) -> some View {
-        VStack(spacing: playerSize.verticalSpacing) {
+        VStack(spacing: playerSize.verticalSpacing + 10) {
             VolumeSlider()
                 .padding(.horizontal, 8)
 
             footer(width: playerSize.width)
-                .padding(.top, playerSize.verticalSpacing)
+                // Reduced spacing from verticalSpacing to verticalSpacing-20
+                .padding(.top, playerSize.verticalSpacing - 20)
+                // Increased bottom padding by 15pt
+                .padding(.bottom, 15)
                 .padding(.horizontal, ViewConst.playerCardPaddings)
         }
     }
 
     func footer(width: CGFloat) -> some View {
-        HStack(alignment: .top, spacing: width * 0.18) {
+        // Reduced spacing from 0.18 to 0.12 for tighter button arrangement
+        HStack(alignment: .center, spacing: width * 0.12) {
             // Lyrics button
             Button {
                 showLyrics = true
             } label: {
                 Image(systemName: "quote.bubble")
-                    .font(.title2)
+                    .font(.system(size: 20, weight: .semibold))
             }
             .sheet(isPresented: $showLyrics) {
                 LyricsView()
                     .environment(model)
             }
             
-            // AirPlay button
-            VStack(spacing: 6) {
-                AirPlayButton()
-                Text("AirPlay")
-                    .font(.caption)
+            // AirPlay button - using center alignment to ignore text height
+            Button {
+                // AirPlay button action handled by AVRoutePickerView
+            } label: {
+                VStack(spacing: 0) {
+                    AirPlayButton()
+                        .frame(height: 20)
+                }
             }
+            .disabled(true) // Disable button, let AVRoutePickerView handle interaction
             
             // Queue button
             Button {
                 showQueue = true
             } label: {
                 Image(systemName: "list.bullet")
-                    .font(.title2)
+                    .font(.system(size: 20, weight: .semibold))
             }
             .sheet(isPresented: $showQueue) {
                 QueueView()
