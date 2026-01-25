@@ -18,22 +18,21 @@ struct PlayerControls: View {
             let size = $0.size
             let spacing = size.verticalSpacing
             VStack(spacing: 0) {
-                if showTrackInfo {
-                    VStack(spacing: spacing) {
+                // Always use the same structure for consistent positioning
+                VStack(spacing: spacing) {
+                    if showTrackInfo {
                         trackInfo
-                        let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
-                        TimingIndicator(spacing: spacing)
-                            .padding(.top, spacing)
-                            .padding(.horizontal, indicatorPadding)
+                    } else {
+                        // Empty space to maintain consistent layout
+                        Color.clear.frame(height: 44)
                     }
-                    .frame(height: size.height / 2.5, alignment: .top)
-                } else {
-                    // When in compact mode, show only timing indicator
                     let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
                     TimingIndicator(spacing: spacing)
+                        .padding(.top, spacing)
                         .padding(.horizontal, indicatorPadding)
-                        .frame(height: size.height / 4, alignment: .bottom)
                 }
+                .frame(height: size.height / 2.5, alignment: .top)
+                
                 PlayerButtons(spacing: size.width * 0.14)
                     .padding(.horizontal, ViewConst.playerCardPaddings)
                 volume(playerSize: size)
@@ -90,38 +89,49 @@ private extension PlayerControls {
 
     func footer(width: CGFloat) -> some View {
         HStack(alignment: .top, spacing: width * 0.18) {
-            // Lyrics button
+            // Lyrics button with filled circle cutout toggle
             Button {
                 stateManager?.toggleLyrics()
             } label: {
                 ZStack {
-                    Image(systemName: "quote.bubble")
-                        .font(.title2)
-                    // Active indicator when in lyrics mode
                     if stateManager?.isLyricsMode == true {
+                        // Active state: filled circle with icon cutout
                         Circle()
                             .fill(Color(palette.opaque))
-                            .frame(width: 6, height: 6)
-                            .offset(x: 12, y: -12)
+                            .frame(width: 28, height: 28)
+                        Image(systemName: "quote.bubble.fill")
+                            .font(.body)
+                            .foregroundStyle(Color.black.opacity(0.3))
+                    } else {
+                        Image(systemName: "quote.bubble")
+                            .font(.title2)
                     }
                 }
             }
-            // AirPlay button
+            // AirPlay button - without static label
             VStack(spacing: 6) {
                 AirPlayButton()
                     .frame(width: 24, height: 24)
-                Text("iPhone's Airpods")
-                    .font(.caption)
             }
-            // Queue button
+            // Queue button with filled circle cutout toggle
             Button {
                 stateManager?.toggleQueue()
             } label: {
                 ZStack {
-                    Image(systemName: "list.bullet")
-                        .font(.title2)
+                    if stateManager?.isQueueMode == true {
+                        // Active state: filled circle with icon cutout
+                        Circle()
+                            .fill(Color(palette.opaque))
+                            .frame(width: 28, height: 28)
+                        Image(systemName: "list.bullet")
+                            .font(.body)
+                            .foregroundStyle(Color.black.opacity(0.3))
+                    } else {
+                        Image(systemName: "list.bullet")
+                            .font(.title2)
+                    }
                     // Show shuffle/repeat state on queue button (per spec 6.9)
-                    if stateManager != nil {
+                    if stateManager != nil && stateManager?.isQueueMode != true {
                         if model.controller.isShuffleEnabled {
                             Image(systemName: "shuffle")
                                 .font(.caption2)

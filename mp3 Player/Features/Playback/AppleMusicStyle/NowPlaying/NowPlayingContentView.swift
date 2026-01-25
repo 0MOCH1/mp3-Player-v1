@@ -33,7 +33,7 @@ struct NowPlayingContentView: View {
         }
         .padding(.top, safeArea.top)
         .padding(.bottom, safeArea.bottom)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: stateManager.currentState)
+        .animation(.linear(duration: 0.25), value: stateManager.currentState)
         .environment(stateManager)
     }
     
