@@ -6,8 +6,10 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 public struct VolumeSlider: View {
+    @Environment(NowPlayingAdapter.self) var model
     @State var volume: Double = 0.5
     @State var minVolumeAnimationTrigger: Bool = false
     @State var maxVolumeAnimationTrigger: Bool = false
@@ -30,11 +32,18 @@ public struct VolumeSlider: View {
         )
         .sliderStyle(.volume)
         .font(.system(size: 14))
-        .onChange(of: volume) {
-            if volume == range.lowerBound {
+        .onAppear {
+            // Initialize with controller's volume
+            volume = Double(model.controller.volume)
+        }
+        .onChange(of: volume) { oldValue, newValue in
+            // Update controller volume
+            model.controller.setVolume(Float(newValue))
+            
+            if newValue == range.lowerBound {
                 minVolumeAnimationTrigger.toggle()
             }
-            if volume == range.upperBound {
+            if newValue == range.upperBound {
                 maxVolumeAnimationTrigger.toggle()
             }
         }

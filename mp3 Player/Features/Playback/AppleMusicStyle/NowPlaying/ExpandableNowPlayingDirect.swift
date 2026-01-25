@@ -17,6 +17,7 @@ struct ExpandableNowPlayingDirect: View {
         GeometryReader {
             let size = $0.size
             let safeArea = $0.safeAreaInsets
+            let isDragging = offsetY > 0
 
             ZStack(alignment: .top) {
                 NowPlayingBackground(
@@ -30,6 +31,7 @@ struct ExpandableNowPlayingDirect: View {
                     safeArea: safeArea
                 )
             }
+            .clipShape(RoundedRectangle(cornerRadius: isDragging ? 20 : 0))
             .offset(y: offsetY)
             .gesture(
                 DragGesture(minimumDistance: 20)
@@ -93,14 +95,17 @@ private struct RegularNowPlayingSimple: View {
     var artwork: some View {
         GeometryReader {
             let size = $0.size
-            // Always show at full size when NowPlaying screen is open
+            // Show smaller when paused, full size when playing
+            let isPlaying = model.state == .playing
             ArtworkImageView(artworkUri: model.display.artworkUri, cornerRadius: 10, contentMode: .fill)
+                .padding(isPlaying ? 0 : 48)
                 .shadow(
-                    color: Color(.sRGBLinear, white: 0, opacity: 0.33),
-                    radius: 8,
-                    y: 10
+                    color: Color(.sRGBLinear, white: 0, opacity: isPlaying ? 0.33 : 0.13),
+                    radius: isPlaying ? 8 : 3,
+                    y: isPlaying ? 10 : 3
                 )
                 .frame(width: size.width, height: size.height)
+                .animation(.smooth, value: model.state)
         }
     }
 }
