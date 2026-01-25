@@ -32,7 +32,7 @@ struct ExpandableNowPlayingDirect: View {
                     isFullExpanded: true
                 )
                 
-                RegularNowPlayingSimple(
+                NowPlayingContentView(
                     size: size,
                     safeArea: safeArea
                 )
@@ -80,52 +80,6 @@ struct ExpandableNowPlayingDirect: View {
                let screen = windowScene.screen as UIScreen? {
                 deviceCornerRadius = screen.displayCornerRadius
             }
-        }
-    }
-}
-
-// Simplified version without matched geometry and compact/expand transitions
-private struct RegularNowPlayingSimple: View {
-    @Environment(NowPlayingAdapter.self) var model
-    var size: CGSize
-    var safeArea: EdgeInsets
-
-    var body: some View {
-        VStack(spacing: 12) {
-            grip
-                .blendMode(.overlay)
-
-            artwork
-                .frame(height: size.width - 50)
-                .padding(.vertical, size.height < 700 ? 10 : 30)
-                .padding(.horizontal, 25)
-
-            PlayerControls()
-        }
-        .padding(.top, safeArea.top)
-        .padding(.bottom, safeArea.bottom)
-    }
-    
-    var grip: some View {
-        Capsule()
-            .fill(.white.secondary)
-            .frame(width: 40, height: 5)
-    }
-
-    var artwork: some View {
-        GeometryReader {
-            let size = $0.size
-            // Show smaller when paused, full size when playing
-            let isPlaying = model.state == .playing
-            ArtworkImageView(artworkUri: model.display.artworkUri, cornerRadius: 10, contentMode: .fill)
-                .padding(isPlaying ? 0 : 48)
-                .shadow(
-                    color: Color(.sRGBLinear, white: 0, opacity: isPlaying ? 0.33 : 0.13),
-                    radius: isPlaying ? 8 : 3,
-                    y: isPlaying ? 10 : 3
-                )
-                .frame(width: size.width, height: size.height)
-                .animation(.smooth, value: model.state)
         }
     }
 }

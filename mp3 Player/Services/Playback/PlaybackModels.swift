@@ -25,3 +25,14 @@ struct PlaybackItem: Identifiable, Equatable {
     let duration: Double?
     let artistId: Int64?
 }
+
+/// History item for display in queue screen
+struct HistoryDisplayItem: Identifiable, Equatable {
+    let id: Int64
+    let source: TrackSource
+    let sourceTrackId: String
+    let artworkUri: String?
+    let title: String
+    let artist: String?
+    let playedAt: Date
+}

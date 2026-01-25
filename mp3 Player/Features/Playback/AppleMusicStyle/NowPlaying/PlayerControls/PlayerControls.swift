@@ -10,6 +10,8 @@ import SwiftUI
 struct PlayerControls: View {
     @Environment(NowPlayingAdapter.self) var model
     @State private var volume: Double = 0.5
+    var stateManager: NowPlayingStateManager? = nil
+    var showTrackInfo: Bool = true
 
     var body: some View {
         GeometryReader {
@@ -17,13 +19,20 @@ struct PlayerControls: View {
             let spacing = size.verticalSpacing
             VStack(spacing: 0) {
                 VStack(spacing: spacing) {
+                    // Track info with slide + fade animation
+                    // S0→Other: slides up while fading out
+                    // Other→S0: slides down while fading in
                     trackInfo
+                        .opacity(showTrackInfo ? 1 : 0)
+                        .offset(y: showTrackInfo ? 0 : -20)
+                    
                     let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
                     TimingIndicator(spacing: spacing)
                         .padding(.top, spacing)
                         .padding(.horizontal, indicatorPadding)
                 }
                 .frame(height: size.height / 2.5, alignment: .top)
+                
                 PlayerButtons(spacing: size.width * 0.14)
                     .padding(.horizontal, ViewConst.playerCardPaddings)
                 volume(playerSize: size)
@@ -80,21 +89,64 @@ private extension PlayerControls {
 
     func footer(width: CGFloat) -> some View {
         HStack(alignment: .top, spacing: width * 0.18) {
-            Button {} label: {
-                Image(systemName: "quote.bubble")
-                    .font(.title2)
-            }
-            VStack(spacing: 6) {
-                Button {} label: {
-                    Image(systemName: "airpods.gen3")
-                        .font(.title2)
+            // Lyrics button with filled circle cutout toggle
+            Button {
+                stateManager?.toggleLyrics()
+            } label: {
+                ZStack {
+                    if stateManager?.isLyricsMode == true {
+                        // Active state: filled circle with icon
+                        Circle()
+                            .fill(Color(palette.opaque))
+                            .frame(width: 28, height: 28)
+                        Image(systemName: "quote.bubble.fill")
+                            .font(.body)
+                            .foregroundStyle(Color(palette.opaque).opacity(0.15))
+                            .blendMode(.destinationOut)
+                    } else {
+                        Image(systemName: "quote.bubble")
+                            .font(.title2)
+                    }
                 }
-                Text("iPhone's Airpods")
-                    .font(.caption)
+                .compositingGroup()
             }
-            Button {} label: {
-                Image(systemName: "list.bullet")
-                    .font(.title2)
+            // AirPlay button - without static label
+            VStack(spacing: 6) {
+                AirPlayButton()
+                    .frame(width: 24, height: 24)
+            }
+            // Queue button with filled circle cutout toggle
+            Button {
+                stateManager?.toggleQueue()
+            } label: {
+                ZStack {
+                    if stateManager?.isQueueMode == true {
+                        // Active state: filled circle with icon
+                        Circle()
+                            .fill(Color(palette.opaque))
+                            .frame(width: 28, height: 28)
+                        Image(systemName: "list.bullet")
+                            .font(.body)
+                            .foregroundStyle(Color(palette.opaque).opacity(0.15))
+                            .blendMode(.destinationOut)
+                    } else {
+                        Image(systemName: "list.bullet")
+                            .font(.title2)
+                    }
+                    // Show shuffle/repeat state on queue button (per spec 6.9)
+                    if stateManager != nil && stateManager?.isQueueMode != true {
+                        if model.controller.isShuffleEnabled {
+                            Image(systemName: "shuffle")
+                                .font(.caption2)
+                                .offset(x: 10, y: -10)
+                        } else if model.controller.repeatMode != .off {
+                            Image(systemName: model.controller.repeatMode == .one ? "repeat.1" : "repeat")
+                                .font(.caption2)
+                                .offset(x: 10, y: -10)
+                        }
+                    }
+                }
+                .compositingGroup()
             }
         }
         .foregroundStyle(Color(palette.opaque))
