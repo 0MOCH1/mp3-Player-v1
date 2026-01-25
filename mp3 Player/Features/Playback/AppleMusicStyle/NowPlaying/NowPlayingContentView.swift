@@ -11,6 +11,7 @@ import SwiftUI
 struct NowPlayingContentView: View {
     @Environment(NowPlayingAdapter.self) var model
     @State private var stateManager = NowPlayingStateManager()
+    @Namespace private var artworkTransition
     var size: CGSize
     var safeArea: EdgeInsets
     
@@ -20,16 +21,6 @@ struct NowPlayingContentView: View {
             grip
                 .blendMode(.overlay)
                 .padding(.top, 8)
-            
-            // Compact header (visible only in lyrics mode S1/S2 per spec 1.1)
-            // Queue mode has its own header in the scrollable list
-            if stateManager.isLyricsMode {
-                CompactTrackInfoView {
-                    stateManager.returnToStandard()
-                }
-                .padding(.horizontal, ViewConst.playerCardPaddings)
-                .padding(.top, 12)
-            }
             
             // Main content area - takes all available space
             mainContent
@@ -59,22 +50,34 @@ struct NowPlayingContentView: View {
             standardContent
             
         case .lyricsSmall, .lyricsLarge:
-            // S1/S2: Lyrics view
-            LyricsScreenView(stateManager: stateManager)
+            // S1/S2: Lyrics view with compact header
+            VStack(spacing: 0) {
+                CompactTrackInfoViewAnimated(
+                    namespace: artworkTransition,
+                    onTap: { stateManager.returnToStandard() }
+                )
+                .padding(.horizontal, ViewConst.playerCardPaddings)
+                .padding(.top, 12)
+                
+                LyricsScreenView(stateManager: stateManager)
+            }
             
         case .queueSmall, .queueReorderLarge:
-            // S3/S4: Queue view
+            // S3/S4: Queue view (has its own header in scroll list)
             QueueScreenView(stateManager: stateManager)
         }
     }
     
     @ViewBuilder
     private var standardContent: some View {
-        // S0: Standard state with large artwork (same as original)
-        artwork
-            .frame(height: size.width - 50)
-            .padding(.vertical, size.height < 700 ? 10 : 30)
-            .padding(.horizontal, 25)
+        VStack(spacing: 12) {
+            // S0: Standard state with large artwork (same as original)
+            artwork
+                .matchedGeometryEffect(id: "artwork", in: artworkTransition)
+                .frame(height: size.width - 50)
+                .padding(.vertical, size.height < 700 ? 10 : 30)
+                .padding(.horizontal, 25)
+        }
     }
     
     private var artwork: some View {
@@ -93,6 +96,51 @@ struct NowPlayingContentView: View {
             )
             .frame(width: geo.size.width, height: geo.size.height)
             .animation(.smooth, value: model.state)
+        }
+    }
+}
+
+/// Compact track info with matched geometry for smooth transitions
+struct CompactTrackInfoViewAnimated: View {
+    @Environment(NowPlayingAdapter.self) var model
+    let namespace: Namespace.ID
+    let onTap: () -> Void
+    
+    private let height: CGFloat = 48
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Thumbnail artwork with matched geometry
+            ArtworkImageView(
+                artworkUri: model.display.artworkUri,
+                cornerRadius: 6,
+                contentMode: .fill
+            )
+            .frame(width: height, height: height)
+            .matchedGeometryEffect(id: "artwork", in: namespace)
+            
+            // Title and artist
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.display.title)
+                    .font(.callout)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color(Palette.PlayerCard.opaque))
+                    .lineLimit(1)
+                
+                if let subtitle = model.display.subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.7))
+                        .lineLimit(1)
+                }
+            }
+            
+            Spacer()
+        }
+        .frame(height: height)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap()
         }
     }
 }
