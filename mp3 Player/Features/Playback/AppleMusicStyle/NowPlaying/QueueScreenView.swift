@@ -160,14 +160,12 @@ struct QueueScreenView: View {
             .padding(.vertical, 40)
         } else {
             // Queue items with reorder handle (per spec 6.8)
-            ForEach(Array(upNextItems.enumerated()), id: \.element.id) { index, item in
+            ForEach(upNextItems) { item in
+                let itemIndex = upNextItems.firstIndex(where: { $0.id == item.id }) ?? 0
                 QueueItemRow(
                     item: item,
-                    onTap: {
-                        // Play this item
-                    },
                     onDelete: {
-                        deleteQueueItem(at: currentIndex + 1 + index)
+                        deleteQueueItem(at: currentIndex + 1 + itemIndex)
                     },
                     onDragStart: {
                         // Per spec 3.3: Reorder handle drag starts S4
@@ -247,11 +245,10 @@ struct HistoryItemRow: View {
 
 struct QueueItemRow: View {
     let item: PlaybackItem
-    let onTap: () -> Void
     let onDelete: () -> Void
     let onDragStart: () -> Void
     
-    @GestureState private var isDragging = false
+    @State private var didStartDrag = false
     
     var body: some View {
         HStack(spacing: 12) {
@@ -284,21 +281,21 @@ struct QueueItemRow: View {
                 .foregroundStyle(Color(Palette.PlayerCard.opaque).opacity(0.5))
                 .padding(.trailing, 4)
                 .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .updating($isDragging) { _, state, _ in
-                            if !state {
-                                state = true
+                    DragGesture(minimumDistance: 5)
+                        .onChanged { _ in
+                            if !didStartDrag {
+                                didStartDrag = true
                                 onDragStart()
                             }
+                        }
+                        .onEnded { _ in
+                            didStartDrag = false
                         }
                 )
         }
         .padding(.horizontal, ViewConst.playerCardPaddings)
         .padding(.vertical, 8)
         .contentShape(Rectangle())
-        .onTapGesture {
-            onTap()
-        }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             // Per spec 6.8: Left swipe delete without confirmation
             Button(role: .destructive, action: onDelete) {
