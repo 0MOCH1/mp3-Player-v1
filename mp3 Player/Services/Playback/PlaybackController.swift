@@ -356,6 +356,62 @@ final class PlaybackController: ObservableObject {
         currentTime = seconds
         updateNowPlayingTime()
     }
+    
+    /// Fetch history items with track metadata
+    func fetchHistoryItems(limit: Int = 50) async -> [HistoryDisplayItem] {
+        let dbPool = appDatabase.dbPool
+        return await Task.detached(priority: .userInitiated) {
+            (try? dbPool.read { db -> [HistoryDisplayItem] in
+                let sql = """
+                SELECT 
+                    h.id,
+                    h.source,
+                    h.source_track_id,
+                    h.played_at,
+                    t.id AS track_id,
+                    COALESCE(ta.file_uri, aa.file_uri) AS artwork_uri,
+                    COALESCE(mo.title, t.title) AS title,
+                    a.name AS artist
+                FROM history_entries h
+                LEFT JOIN tracks t ON t.source = h.source AND t.source_track_id = h.source_track_id
+                LEFT JOIN artworks ta ON ta.id = t.artwork_id
+                LEFT JOIN albums alb ON alb.id = t.album_id
+                LEFT JOIN artworks aa ON aa.id = COALESCE(t.album_artwork_id, alb.artwork_id)
+                LEFT JOIN artists a ON a.id = t.artist_id
+                LEFT JOIN metadata_overrides mo ON mo.track_id = t.id
+                ORDER BY h.played_at DESC
+                LIMIT ?
+                """
+                let rows = try Row.fetchAll(db, sql: sql, arguments: [limit])
+                return rows.compactMap { row -> HistoryDisplayItem? in
+                    guard let id: Int64 = row["id"],
+                          let sourceRaw: String = row["source"],
+                          let source = TrackSource(rawValue: sourceRaw),
+                          let sourceTrackId: String = row["source_track_id"],
+                          let playedAt: Int64 = row["played_at"] else { return nil }
+                    
+                    return HistoryDisplayItem(
+                        id: id,
+                        source: source,
+                        sourceTrackId: sourceTrackId,
+                        artworkUri: row["artwork_uri"],
+                        title: row["title"] ?? "Unknown",
+                        artist: row["artist"],
+                        playedAt: Date(timeIntervalSince1970: TimeInterval(playedAt))
+                    )
+                }
+            }) ?? []
+        }.value
+    }
+    
+    /// Clear all history entries
+    func clearHistory() {
+        Task {
+            try? await appDatabase.dbPool.write { db in
+                try db.execute(sql: "DELETE FROM history_entries")
+            }
+        }
+    }
 
     private func stop() {
         persistPositionIfNeeded(force: true)

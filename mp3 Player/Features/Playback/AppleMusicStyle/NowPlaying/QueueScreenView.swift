@@ -13,7 +13,7 @@ struct QueueScreenView: View {
     @Environment(NowPlayingAdapter.self) var model
     @Bindable var stateManager: NowPlayingStateManager
     
-    @State private var historyItems: [HistoryItem] = []
+    @State private var historyItems: [HistoryDisplayItem] = []
     @State private var scrollPosition: CGFloat = 0
     
     // Anchor IDs for scroll positioning
@@ -161,16 +161,17 @@ struct QueueScreenView: View {
     }
     
     private func loadHistory() {
-        // Load history items from controller
-        // This would typically fetch from the history repository
-        historyItems = []
+        Task {
+            historyItems = await model.controller.fetchHistoryItems(limit: 50)
+        }
     }
     
     private func clearHistory() {
         historyItems = []
+        model.controller.clearHistory()
     }
     
-    private func playFromHistory(_ item: HistoryItem) {
+    private func playFromHistory(_ item: HistoryDisplayItem) {
         model.controller.playFromHistory(source: item.source, sourceTrackId: item.sourceTrackId)
     }
     
@@ -186,20 +187,10 @@ struct QueueScreenView: View {
     }
 }
 
-// MARK: - Supporting Types
-
-struct HistoryItem: Identifiable {
-    let id: Int64
-    let source: TrackSource
-    let sourceTrackId: String
-    let artworkUri: String?
-    let title: String
-    let artist: String?
-    let playedAt: Date
-}
+// MARK: - Supporting Views
 
 struct HistoryItemRow: View {
-    let item: HistoryItem
+    let item: HistoryDisplayItem
     let onTap: () -> Void
     
     var body: some View {
