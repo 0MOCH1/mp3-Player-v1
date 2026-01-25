@@ -12,7 +12,6 @@ struct ExpandableNowPlayingDirect: View {
     @State private var offsetY: CGFloat = 0.0
     @State private var expandProgress: CGFloat = 1.0
     @Environment(\.colorScheme) var colorScheme
-    @Namespace private var animationNamespace
 
     var body: some View {
         GeometryReader {
@@ -26,11 +25,9 @@ struct ExpandableNowPlayingDirect: View {
                     isFullExpanded: true
                 )
                 
-                RegularNowPlaying(
-                    expanded: $expanded,
+                RegularNowPlayingSimple(
                     size: size,
-                    safeArea: safeArea,
-                    animationNamespace: animationNamespace
+                    safeArea: safeArea
                 )
             }
             .offset(y: offsetY)
@@ -44,14 +41,10 @@ struct ExpandableNowPlayingDirect: View {
                         let translation = max(value.translation.height, 0)
                         let velocity = value.velocity.height / 5
                         
-                        if (translation + velocity) > (size.height * 0.3) {
-                            // Dismiss
-                            withAnimation(.easeOut(duration: 0.25)) {
-                                offsetY = size.height
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                                onDismiss()
-                            }
+                        // Changed threshold from 0.3 to 0.5 (half the screen)
+                        if (translation + velocity) > (size.height * 0.5) {
+                            // Dismiss - call immediately without animation delay
+                            onDismiss()
                         } else {
                             // Snap back
                             withAnimation(.spring()) {
@@ -62,8 +55,52 @@ struct ExpandableNowPlayingDirect: View {
             )
             .ignoresSafeArea()
         }
+        .background(Color.clear) // Transparent background
         .onAppear {
             model.onAppear()
+        }
+    }
+}
+
+// Simplified version without matched geometry and compact/expand transitions
+private struct RegularNowPlayingSimple: View {
+    @Environment(NowPlayingAdapter.self) var model
+    var size: CGSize
+    var safeArea: EdgeInsets
+
+    var body: some View {
+        VStack(spacing: 12) {
+            grip
+                .blendMode(.overlay)
+
+            artwork
+                .frame(height: size.width - 50)
+                .padding(.vertical, size.height < 700 ? 10 : 30)
+                .padding(.horizontal, 25)
+
+            PlayerControls()
+        }
+        .padding(.top, safeArea.top)
+        .padding(.bottom, safeArea.bottom)
+    }
+    
+    var grip: some View {
+        Capsule()
+            .fill(.white.secondary)
+            .frame(width: 40, height: 5)
+    }
+
+    var artwork: some View {
+        GeometryReader {
+            let size = $0.size
+            // Always show at full size when NowPlaying screen is open
+            ArtworkImageView(artworkUri: model.display.artworkUri, cornerRadius: 10, contentMode: .fill)
+                .shadow(
+                    color: Color(.sRGBLinear, white: 0, opacity: 0.33),
+                    radius: 8,
+                    y: 10
+                )
+                .frame(width: size.width, height: size.height)
         }
     }
 }

@@ -43,6 +43,8 @@ struct ContentView: View {
         }
         .fullScreenCover(isPresented: $showsNowPlaying) {
             AppleMusicNowPlayingView()
+                .background(Color.clear) // Transparent background so app content shows through
+                .presentationBackground(.clear) // iOS 16.4+ presentation background
         }
         .task {
             guard !didStartScan else { return }
