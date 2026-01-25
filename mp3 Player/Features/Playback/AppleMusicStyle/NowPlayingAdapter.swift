@@ -5,6 +5,7 @@
 
 import SwiftUI
 import Observation
+import Combine
 
 @MainActor
 @Observable
@@ -12,12 +13,52 @@ class NowPlayingAdapter {
     let controller: PlaybackController
     var colors: [ColorFrequency] = []
     
+    // Mirror controller properties for observation
+    private(set) var state: PlaybackState = .stopped
+    private(set) var currentItem: PlaybackItem?
+    private(set) var currentTime: Double = 0
+    private(set) var duration: Double = 0
+    
+    private var cancellables = Set<AnyCancellable>()
+    
     init(controller: PlaybackController) {
         self.controller = controller
+        
+        // Subscribe to controller changes
+        controller.$state
+            .sink { [weak self] newState in
+                self?.state = newState
+            }
+            .store(in: &cancellables)
+        
+        controller.$currentItem
+            .sink { [weak self] newItem in
+                self?.currentItem = newItem
+                self?.updateColors()
+            }
+            .store(in: &cancellables)
+        
+        controller.$currentTime
+            .sink { [weak self] newTime in
+                self?.currentTime = newTime
+            }
+            .store(in: &cancellables)
+        
+        controller.$duration
+            .sink { [weak self] newDuration in
+                self?.duration = newDuration
+            }
+            .store(in: &cancellables)
+        
+        // Initialize with current values
+        self.state = controller.state
+        self.currentItem = controller.currentItem
+        self.currentTime = controller.currentTime
+        self.duration = controller.duration
     }
     
     var display: DisplayMedia {
-        if let item = controller.currentItem {
+        if let item = currentItem {
             return DisplayMedia(
                 artworkUri: item.artworkUri,
                 title: item.title,
@@ -37,7 +78,7 @@ class NowPlayingAdapter {
     }
     
     var playPauseButton: ButtonType {
-        switch controller.state {
+        switch state {
         case .playing: .pause
         case .paused, .stopped, .buffering: .play
         }
@@ -45,14 +86,6 @@ class NowPlayingAdapter {
     
     var backwardButton: ButtonType { .backward }
     var forwardButton: ButtonType { .forward }
-    
-    var currentTime: Double {
-        controller.currentTime
-    }
-    
-    var duration: Double {
-        controller.duration
-    }
     
     func onAppear() {
         updateColors()
@@ -71,13 +104,11 @@ class NowPlayingAdapter {
     }
     
     func seek(to time: Double) {
-        Task {
-            controller.seek(to: time)
-        }
+        controller.seek(to: time)
     }
     
     func updateColors() {
-        guard let artworkUri = controller.currentItem?.artworkUri,
+        guard let artworkUri = currentItem?.artworkUri,
               let url = URL(string: artworkUri) else {
             colors = []
             return

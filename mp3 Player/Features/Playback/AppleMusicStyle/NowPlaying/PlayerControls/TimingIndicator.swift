@@ -11,6 +11,7 @@ struct TimingIndicator: View {
     let spacing: CGFloat
     @Environment(NowPlayingAdapter.self) var model
     @State var progress: Double = 0
+    @State private var lastSeekTime: Double = 0
 
     var body: some View {
         let range = 0.0 ... max(model.duration, 1.0)
@@ -29,26 +30,28 @@ struct TimingIndicator: View {
         .transformEffect(.identity)
         .onAppear {
             progress = model.currentTime
+            lastSeekTime = model.currentTime
         }
         .onChange(of: model.currentTime) { _, newTime in
-            // Only update if not actively scrubbing
-            if !isScrubbing {
+            // Update progress from playback if user isn't actively changing it
+            if abs(progress - newTime) < 0.5 {
                 progress = newTime
             }
         }
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    isScrubbing = true
+        .onChange(of: progress) { oldValue, newValue in
+            // User manually changed the slider
+            if abs(newValue - model.currentTime) > 1.0 {
+                lastSeekTime = newValue
+                // Debounce seeking
+                Task {
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+                    if abs(progress - lastSeekTime) < 0.1 {
+                        model.seek(to: lastSeekTime)
+                    }
                 }
-                .onEnded { _ in
-                    isScrubbing = false
-                    model.seek(to: progress)
-                }
-        )
+            }
+        }
     }
-    
-    @State private var isScrubbing: Bool = false
 }
 
 private extension TimingIndicator {
