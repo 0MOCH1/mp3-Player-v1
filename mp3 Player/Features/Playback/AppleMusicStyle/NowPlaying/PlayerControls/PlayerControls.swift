@@ -109,7 +109,7 @@ private extension PlayerControls {
                     
                     Image(systemName: lyricsToggled ? "quote.bubble.fill" : "quote.bubble")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(lyricsToggled ? Color(palette.transparent) : Color(palette.opaque))
+                        .foregroundStyle(lyricsToggled ? .black.opacity(0.6) : Color(palette.opaque))
                         .blendMode(lyricsToggled ? .normal : .overlay)
                 }
             }
@@ -139,7 +139,7 @@ private extension PlayerControls {
                     
                     Image(systemName: "list.bullet")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(queueToggled ? Color(palette.transparent) : Color(palette.opaque))
+                        .foregroundStyle(queueToggled ? .black.opacity(0.6) : Color(palette.opaque))
                         .blendMode(queueToggled ? .normal : .overlay)
                 }
             }
