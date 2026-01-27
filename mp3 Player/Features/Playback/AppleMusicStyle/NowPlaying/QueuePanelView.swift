@@ -5,6 +5,11 @@
 //  FullPlayer内のQueueモードで表示されるキューパネル
 //  Layer1: ContentPanel に属する
 //
+//  v8仕様に基づく構造:
+//  1) CompactTrackInfo（固定ヘッダー）
+//  2) QueueControls（固定ヘッダー、Historyボタン含む）
+//  3) CurrentQueue（Queue/Historyで切り替え可能）
+//
 
 import SwiftUI
 import UniformTypeIdentifiers
@@ -16,16 +21,15 @@ struct QueuePanelView: View {
     let controlsHeight: CGFloat
     var animation: Namespace.ID
     
-    private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
     
-    // 実際のControls高さ（Visibility考慮）- v7仕様に基づき動的に変更
+    // 実際のControls高さ（Visibility考慮）
     private var effectiveControlsHeight: CGFloat {
         model.controlsVisibility == .shown ? controlsHeight + safeArea.bottom + ViewConst.bottomToFooterPadding : 0
     }
     
-    @State private var scrolledID: String? = nil
-    @State private var hasSetInitialPosition: Bool = false
+    // Queue/History切り替え用
+    @State private var showingHistory: Bool = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -34,94 +38,37 @@ struct QueuePanelView: View {
                 .frame(height: ViewConst.gripSpaceHeight)
                 .padding(.top, safeArea.top)
             
-            // QueuePanel本体
-            ZStack(alignment: .top) {
-                // スクロールコンテンツ（EdgeFade適用）
-                queueScrollContent
-                    .mask(edgeFadeMask)
-                
-                // QueueControls - EdgeFadeの外側に配置（フェードに巻き込まれない）
-                VStack {
-                    Spacer()
-                        .frame(height: compactTrackInfoHeight + 20) // CompactTrackInfo後に配置
-                    queueControlsView
-                    Spacer()
+            // 1) CompactTrackInfo（固定ヘッダー）- v8仕様
+            CompactTrackInfoView(animation: animation)
+                .padding(.horizontal, 20)
+                .padding(.top, ViewConst.contentTopPadding + ViewConst.compactTrackInfoTopOffset)
+            
+            // 2) QueueControls（固定ヘッダー）- v8仕様: Historyボタン含む
+            queueControlsView
+            
+            // 3) CurrentQueue/History（スクロール可能、切り替え可能）
+            ZStack {
+                if showingHistory {
+                    historyListView
+                        .transition(.opacity)
+                } else {
+                    currentQueueListView
+                        .transition(.opacity)
                 }
-                .allowsHitTesting(true)
             }
+            .animation(.easeInOut(duration: ViewConst.animationDuration), value: showingHistory)
+            .mask(edgeFadeMask)
             .padding(.bottom, effectiveControlsHeight)
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .onAppear {
-            // 初期位置をCompactTrackInfoに即座に設定（アニメーションなし）
-            if !hasSetInitialPosition {
-                scrolledID = "nowPlaying"
-                hasSetInitialPosition = true
-            }
-        }
     }
     
-    private var queueScrollContent: some View {
-        ScrollViewReader { scrollProxy in
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    // History セクション
-                    historySection
-                    
-                    // CompactTrackInfo（現在再生中）- 10pt上に配置
-                    CompactTrackInfoView(animation: animation)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                        .padding(.top, ViewConst.compactTrackInfoTopOffset)
-                        .id("nowPlaying")
-                    
-                    // QueueControlsの占有スペース（実際のQueueControlsはEdgeFade外に配置）
-                    Spacer()
-                        .frame(height: 60)
-                    
-                    // CurrentQueue セクション
-                    currentQueueSection
-                }
-            }
-            .scrollPosition(id: $scrolledID, anchor: .top)
-            .onChange(of: scrolledID) { oldValue, newValue in
-                // スクロール位置の変更を追跡
-            }
-        }
-    }
-    
-    // MARK: - History Section
-    
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("History")
-                .font(.headline)
-                .foregroundStyle(.white.opacity(0.8))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
-            
-            if model.historyItems.isEmpty {
-                Text("No history")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.5))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-            } else {
-                ForEach(model.historyItems) { item in
-                    HistoryRowView(item: item)
-                        .padding(.horizontal, 20)
-                }
-            }
-        }
-    }
-    
-    // MARK: - QueueControls (Shuffle / Repeat) - v7仕様
-    // EdgeFade外、背景なし、ボタンサイズ拡大
+    // MARK: - QueueControls (固定ヘッダー)
+    // v8仕様: Shuffle / Repeat / History ボタン
     
     private var queueControlsView: some View {
-        HStack(spacing: 16) {
-            // Shuffle ボタン - Capsule、サイズ拡大（縦+5pt、横+20pt）
+        HStack(spacing: 12) {
+            // Shuffle ボタン
             Button {
                 model.toggleShuffle()
             } label: {
@@ -140,7 +87,7 @@ struct QueuePanelView: View {
                 .foregroundStyle(model.isShuffleEnabled ? .black : .white)
             }
             
-            // Repeat ボタン - Capsule、サイズ拡大
+            // Repeat ボタン
             Button {
                 model.cycleRepeat()
             } label: {
@@ -158,10 +105,28 @@ struct QueuePanelView: View {
                 )
                 .foregroundStyle(model.repeatMode != .off ? .black : .white)
             }
+            
+            // History ボタン - v8仕様: トグルでQueue/History切り替え
+            Button {
+                showingHistory.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.body.weight(.semibold))
+                    Text("History")
+                        .font(.subheadline.weight(.medium))
+                }
+                .padding(.horizontal, ViewConst.queueControlsHorizontalPadding)
+                .padding(.vertical, ViewConst.queueControlsVerticalPadding)
+                .background(
+                    Capsule()
+                        .fill(showingHistory ? .white : .white.opacity(0.15))
+                )
+                .foregroundStyle(showingHistory ? .black : .white)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.vertical, 12)
-        // 背景なし（v7仕様）
     }
     
     private var repeatIcon: String {
@@ -179,50 +144,87 @@ struct QueuePanelView: View {
         }
     }
     
-    // MARK: - CurrentQueue Section
+    // MARK: - History List View
     
-    private var currentQueueSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Source ラベル（セクションラベルとして表示）
-            if let currentItem = model.currentItem, let sourceLabel = currentItem.sourceLabel {
-                Text("Playing from \(sourceLabel)")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.6))
+    private var historyListView: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                // History ラベル
+                Text("History")
+                    .font(.headline)
+                    .foregroundStyle(.white.opacity(0.8))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 8)
-            }
-            
-            if model.queueItems.isEmpty {
-                Text("Queue is empty")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.5))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
-            } else {
-                // Reorderable list using ForEach with onMove
-                ForEach(Array(model.queueItems.enumerated()), id: \.element.id) { index, item in
-                    QueueRowView(
-                        item: item,
-                        index: index,
-                        onDelete: {
-                            model.removeFromQueue(at: index)
+                
+                if model.historyItems.isEmpty {
+                    Text("No history")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.5))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                } else {
+                    ForEach(model.historyItems) { item in
+                        HistoryRowView(item: item) {
+                            // 履歴の曲をタップして再生開始 → Queue表示に戻る
+                            model.playFromHistory(item: item)
+                            showingHistory = false
                         }
-                    )
-                    .padding(.horizontal, 20)
-                    .onDrag {
-                        model.startReordering()
-                        return NSItemProvider(object: String(item.id) as NSString)
+                        .padding(.horizontal, 20)
                     }
-                    .onDrop(of: [.text], delegate: QueueDropDelegate(
-                        item: item,
-                        items: model.queueItems,
-                        draggedItem: nil,
-                        moveAction: { from, to in
-                            model.moveQueue(fromOffsets: IndexSet(integer: from), toOffset: to)
-                            model.endReordering()
+                }
+            }
+        }
+    }
+    
+    // MARK: - CurrentQueue List View
+    
+    private var currentQueueListView: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                // Source ラベル（セクションラベルとして表示）- v8仕様
+                if let currentItem = model.currentItem, let sourceLabel = currentItem.sourceLabel {
+                    Text("Playing from \(sourceLabel)")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                }
+                
+                if model.queueItems.isEmpty {
+                    Text("Queue is empty")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.5))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                } else {
+                    // Reorderable list - v8仕様: 常に並び替え可能
+                    ForEach(Array(model.queueItems.enumerated()), id: \.element.id) { index, item in
+                        QueueRowView(
+                            item: item,
+                            index: index,
+                            onDelete: {
+                                model.removeFromQueue(at: index)
+                            }
+                        )
+                        .padding(.horizontal, 20)
+                        .draggable(String(item.id)) {
+                            // Drag preview
+                            QueueRowView(item: item, index: index, onDelete: {})
+                                .frame(width: size.width - 40)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(8)
                         }
-                    ))
+                        .onDrop(of: [.text], delegate: QueueDropDelegate(
+                            item: item,
+                            items: model.queueItems,
+                            draggedItem: nil,
+                            moveAction: { from, to in
+                                model.moveQueue(fromOffsets: IndexSet(integer: from), toOffset: to)
+                            }
+                        ))
+                    }
                 }
             }
         }
@@ -335,46 +337,51 @@ private struct QueueRowView: View {
 }
 
 // MARK: - HistoryRowView (RoundedRectangle Artwork)
+// v8仕様: 履歴内の曲をタップして再生を始める
 
 private struct HistoryRowView: View {
     let item: HistoryItem
+    let onTap: () -> Void
     
     private let artworkSize: CGFloat = 48
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Artwork (RoundedRectangle = 角丸あり)
-            if let artworkUri = item.artworkUri {
-                ArtworkImageView(artworkUri: artworkUri, cornerRadius: ViewConst.queueArtworkCornerRadius, contentMode: .fill)
-                    .frame(width: artworkSize, height: artworkSize)
-            } else {
-                RoundedRectangle(cornerRadius: ViewConst.queueArtworkCornerRadius)
-                    .fill(.white.opacity(0.1))
-                    .frame(width: artworkSize, height: artworkSize)
-                    .overlay {
-                        Image(systemName: "music.note")
-                            .foregroundStyle(.white.opacity(0.5))
-                    }
-            }
-            
-            // Title + Artist
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.callout)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                
-                if let artist = item.artist {
-                    Text(artist)
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.6))
-                        .lineLimit(1)
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Artwork (RoundedRectangle = 角丸あり)
+                if let artworkUri = item.artworkUri {
+                    ArtworkImageView(artworkUri: artworkUri, cornerRadius: ViewConst.queueArtworkCornerRadius, contentMode: .fill)
+                        .frame(width: artworkSize, height: artworkSize)
+                } else {
+                    RoundedRectangle(cornerRadius: ViewConst.queueArtworkCornerRadius)
+                        .fill(.white.opacity(0.1))
+                        .frame(width: artworkSize, height: artworkSize)
+                        .overlay {
+                            Image(systemName: "music.note")
+                                .foregroundStyle(.white.opacity(0.5))
+                        }
                 }
+                
+                // Title + Artist
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title)
+                        .font(.callout)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    
+                    if let artist = item.artist {
+                        Text(artist)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.6))
+                            .lineLimit(1)
+                    }
+                }
+                
+                Spacer()
             }
-            
-            Spacer()
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, 6)
-        .contentShape(Rectangle())
+        .buttonStyle(.plain)
     }
 }

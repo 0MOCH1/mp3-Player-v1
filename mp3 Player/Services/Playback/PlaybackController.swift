@@ -195,6 +195,24 @@ final class PlaybackController: ObservableObject {
 
         Task { await setCurrentIndex(safeIndex, playImmediately: true, recordHistory: true) }
     }
+    
+    /// 履歴からトラックIDで再生を開始 (v8仕様対応)
+    func playFromHistoryById(_ trackId: Int64) {
+        guard let item = fetchPlaybackItemByTrackId(trackId) else { return }
+        
+        if queue.isEmpty {
+            setQueue(trackIds: [item.id], startAt: 0, playImmediately: true)
+            return
+        }
+        
+        let index = currentIndex ?? 0
+        let safeIndex = min(max(index, 0), queue.count - 1)
+        queue[safeIndex] = item
+        queueItems = queue
+        persistQueueReplace(at: safeIndex, with: item)
+        
+        Task { await setCurrentIndex(safeIndex, playImmediately: true, recordHistory: true) }
+    }
 
     func refreshQueueArtwork() {
         guard !queue.isEmpty || currentItem != nil else { return }
@@ -1070,6 +1088,12 @@ final class PlaybackController: ObservableObject {
             duration: row["duration"] as Double?,
             artistId: row["artist_id"] as Int64?
         )
+    }
+    
+    /// トラックIDからPlaybackItemを取得 (v8仕様対応)
+    private func fetchPlaybackItemByTrackId(_ trackId: Int64) -> PlaybackItem? {
+        let items = fetchPlaybackItems(trackIds: [trackId])
+        return items.first
     }
 
     private func restoreQueueIfNeeded() async {

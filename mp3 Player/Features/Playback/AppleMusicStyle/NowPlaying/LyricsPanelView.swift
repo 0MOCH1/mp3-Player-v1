@@ -142,7 +142,8 @@ struct CompactTrackInfoView: View {
     @Environment(NowPlayingAdapter.self) var model
     var animation: Namespace.ID? = nil
     
-    private let artworkSize: CGFloat = 80
+    // v8仕様: CompactTrackInfo の Artwork サイズは 75pt
+    private let artworkSize: CGFloat = 75
     
     var body: some View {
         HStack(spacing: 16) {

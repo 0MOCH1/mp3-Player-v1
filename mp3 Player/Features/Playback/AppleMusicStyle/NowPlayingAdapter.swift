@@ -282,6 +282,11 @@ class NowPlayingAdapter {
         controller.moveQueue(fromOffsets: fromOffsets, toOffset: toOffset)
     }
     
+    /// 履歴から再生を開始 (v8仕様)
+    func playFromHistory(item: HistoryItem) {
+        controller.playFromHistoryById(item.id)
+    }
+    
     func updateColors() {
         guard let artworkUri = currentItem?.artworkUri,
               let url = URL(string: artworkUri) else {
