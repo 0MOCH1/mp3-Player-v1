@@ -58,6 +58,7 @@ struct ExpandableNowPlayingDirect: View {
                 // ========================================
                 VStack(spacing: 0) {
                     Spacer()
+                        .allowsHitTesting(false) // Spacerはタッチを通過させる
                     
                     // TrackInfo - NowPlayingモードかつCompactTrackInfo非表示時のみ表示
                     // シークバーの30pt上に配置
@@ -78,6 +79,7 @@ struct ExpandableNowPlayingDirect: View {
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .animation(.easeInOut(duration: ViewConst.animationDuration), value: model.playerMode)
             .animation(.easeInOut(duration: ViewConst.animationDuration), value: model.controlsVisibility)
