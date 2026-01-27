@@ -15,6 +15,10 @@ struct QueuePanelView: View {
     
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
+    private let historyGateThreshold: CGFloat = 80 // History Gate の閾値
+    
+    // スクロール位置追跡用
+    @State private var lastNowPlayingY: CGFloat = 0
     
     var body: some View {
         VStack(spacing: 0) {
@@ -42,6 +46,14 @@ struct QueuePanelView: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
                         .id("nowPlaying")
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.preference(
+                                    key: NowPlayingPositionPreferenceKey.self,
+                                    value: geo.frame(in: .named("queueScroll")).minY
+                                )
+                            }
+                        )
                     
                     // QueueControls (Shuffle / Repeat) - sticky相当
                     Section {
@@ -52,6 +64,11 @@ struct QueuePanelView: View {
                 }
                 .padding(.bottom, controlsBottomPadding)
             }
+            .coordinateSpace(name: "queueScroll")
+            .onPreferenceChange(NowPlayingPositionPreferenceKey.self) { minY in
+                // NowPlaying の位置を追跡して History Gate 判定
+                handleHistoryGate(nowPlayingMinY: minY, scrollProxy: scrollProxy)
+            }
             .onAppear {
                 // 初期位置: CompactTrackInfoが上端に揃う
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -61,6 +78,23 @@ struct QueuePanelView: View {
                 }
             }
         }
+    }
+    
+    // MARK: - History Gate Logic
+    
+    private func handleHistoryGate(nowPlayingMinY: CGFloat, scrollProxy: ScrollViewProxy) {
+        // History Gate: NowPlaying が閾値を超えて下にある場合
+        // ドラッグ終了時（スクロール停止時）にスナップ判定
+        
+        // 閾値判定: NowPlayingが見え始めているが、まだ上端に達していない状態
+        let isInTransitionZone = nowPlayingMinY > 0 && nowPlayingMinY < historyGateThreshold
+        
+        // 閾値を超えた場合のみスナップ（意図的な操作と判断）
+        // Note: SwiftUI の ScrollView では onScrollEnd がないため、
+        // ユーザーが手を離したタイミングでのスナップは難しい
+        // 代わりに、初期スクロール位置で対応
+        
+        lastNowPlayingY = nowPlayingMinY
     }
     
     // MARK: - History Section
@@ -311,5 +345,14 @@ private struct HistoryRowView: View {
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - PreferenceKeys for Scroll Tracking
+
+private struct NowPlayingPositionPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

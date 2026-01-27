@@ -73,13 +73,10 @@ public struct VolumeSlider: View {
     private func setupVolumeView() {
         let view = MPVolumeView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
         view.showsVolumeSlider = true
-        // Suppress deprecation warning - we need this to hide the route button
-        // AVRoutePickerView is not a direct replacement for hiding the button
-        if #available(iOS 13.0, *) {
-            view.setValue(false, forKey: "showsRouteButton")
-        } else {
-            view.showsRouteButton = false
-        }
+        // Note: showsRouteButton is deprecated but AVRoutePickerView is not a direct replacement
+        // for hiding the route button in MPVolumeView. Using KVC to avoid deprecation warning.
+        // This is safe as the key has been stable since iOS 3.0.
+        view.setValue(false, forKey: "showsRouteButton")
         view.isHidden = false
         view.alpha = 0.0001
         
