@@ -15,14 +15,12 @@ struct QueuePanelView: View {
     
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
-    // Grip用のスペース（GripはLayer0で描画されるため、ここではスペースのみ確保）
-    private let gripSpaceHeight: CGFloat = 8 + 5 + 8 // topPadding + gripHeight + spacing
     
     var body: some View {
         VStack(spacing: 0) {
             // Grip用のスペーサー（GripはLayer0で描画される）
             Spacer()
-                .frame(height: gripSpaceHeight)
+                .frame(height: ViewConst.gripSpaceHeight)
                 .padding(.top, safeArea.top)
             
             // QueuePanel本体

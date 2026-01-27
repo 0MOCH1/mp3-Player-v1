@@ -39,7 +39,7 @@ struct ExpandableNowPlayingDirect: View {
                 VStack {
                     grip
                         .blendMode(.overlay)
-                        .padding(.top, 8)
+                        .padding(.top, ViewConst.gripTopPadding)
                         .padding(.top, safeArea.top)
                     Spacer()
                 }
@@ -111,7 +111,7 @@ struct ExpandableNowPlayingDirect: View {
     private var grip: some View {
         Capsule()
             .fill(.white.secondary)
-            .frame(width: 80, height: 5)
+            .frame(width: ViewConst.gripWidth, height: ViewConst.gripHeight)
     }
 }
 
@@ -148,7 +148,7 @@ private struct NowPlayingContentView: View {
         VStack(spacing: 0) {
             // Grip用のスペーサー（GripはLayer0で描画されるため、ここではスペースのみ確保）
             Spacer()
-                .frame(height: 8 + 5 + 8) // gripTopPadding + gripHeight + spacing
+                .frame(height: ViewConst.gripSpaceHeight)
             
             artwork
                 .frame(height: size.width - 50)

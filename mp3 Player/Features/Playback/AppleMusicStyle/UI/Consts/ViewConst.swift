@@ -15,6 +15,16 @@ extension ViewConst {
     static let screenPaddings: CGFloat = 20
     static let tabbarHeight: CGFloat = safeAreaInsets.bottom + 92
     static let compactNowPlayingHeight: CGFloat = 56
+    
+    // Grip (Layer0) constants
+    static let gripWidth: CGFloat = 80
+    static let gripHeight: CGFloat = 5
+    static let gripTopPadding: CGFloat = 8
+    /// Grip用のスペース（GripはLayer0で描画されるため、ContentPanelではスペースのみ確保）
+    static var gripSpaceHeight: CGFloat {
+        gripTopPadding + gripHeight + gripTopPadding // topPadding + gripHeight + spacing
+    }
+    
     static var safeAreaInsets: EdgeInsets {
         if let windowScene = UIApplication.shared.connectedScenes
             .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
