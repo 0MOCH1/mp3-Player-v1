@@ -166,20 +166,27 @@ struct TrackInfoView: View {
 // ========================================
 // Layer1: ContentPanel
 // Modeに応じて切り替わるコンテンツ領域
+// アニメーション: パーツがスムーズに動く形式
 // ========================================
 private struct ContentPanelView: View {
     @Environment(NowPlayingAdapter.self) var model
+    @Namespace private var animation
     var size: CGSize
     var safeArea: EdgeInsets
 
     var body: some View {
-        switch model.playerMode {
-        case .nowPlaying:
-            NowPlayingContentView(size: size, safeArea: safeArea)
-        case .lyrics:
-            LyricsPanelView(size: size, safeArea: safeArea)
-        case .queue:
-            QueuePanelView(size: size, safeArea: safeArea)
+        ZStack {
+            switch model.playerMode {
+            case .nowPlaying:
+                NowPlayingContentView(size: size, safeArea: safeArea, animation: animation)
+                    .transition(.identity) // フェードなし
+            case .lyrics:
+                LyricsPanelView(size: size, safeArea: safeArea, animation: animation)
+                    .transition(.identity)
+            case .queue:
+                QueuePanelView(size: size, safeArea: safeArea)
+                    .transition(.identity)
+            }
         }
     }
 }
@@ -191,6 +198,7 @@ private struct NowPlayingContentView: View {
     @Environment(NowPlayingAdapter.self) var model
     var size: CGSize
     var safeArea: EdgeInsets
+    var animation: Namespace.ID
 
     var body: some View {
         VStack(spacing: 0) {
@@ -213,6 +221,7 @@ private struct NowPlayingContentView: View {
             // Show smaller when paused, full size when playing
             let isPlaying = model.state == .playing
             ArtworkImageView(artworkUri: model.display.artworkUri, cornerRadius: 10, contentMode: .fill)
+                .matchedGeometryEffect(id: "artwork", in: animation)
                 .padding(isPlaying ? 0 : 48)
                 .shadow(
                     color: Color(.sRGBLinear, white: 0, opacity: isPlaying ? 0.33 : 0.13),

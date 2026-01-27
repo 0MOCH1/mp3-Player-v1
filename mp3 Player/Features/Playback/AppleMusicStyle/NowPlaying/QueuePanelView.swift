@@ -182,16 +182,35 @@ struct QueuePanelView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
             } else {
-                // List with reorder support
+                // Reorderable list using draggable/dropDestination
                 ForEach(Array(model.queueItems.enumerated()), id: \.element.id) { index, item in
                     QueueRowView(
                         item: item,
+                        index: index,
                         onDelete: {
                             model.removeFromQueue(at: index)
-                        },
-                        onMove: { }
+                        }
                     )
                     .padding(.horizontal, 20)
+                    .draggable(item.id) {
+                        // Drag preview
+                        Text(item.title)
+                            .padding(8)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(8)
+                    }
+                    .dropDestination(for: String.self) { items, location in
+                        guard let draggedId = items.first,
+                              let fromIndex = model.queueItems.firstIndex(where: { $0.id == draggedId }) else {
+                            return false
+                        }
+                        if fromIndex != index {
+                            model.startReordering()
+                            model.moveQueue(fromOffsets: IndexSet(integer: fromIndex), toOffset: fromIndex < index ? index + 1 : index)
+                            model.endReordering()
+                        }
+                        return true
+                    }
                 }
             }
         }
@@ -227,8 +246,8 @@ struct QueuePanelView: View {
 
 private struct QueueRowView: View {
     let item: PlaybackItem
+    let index: Int
     let onDelete: () -> Void
-    let onMove: () -> Void
     
     private let artworkSize: CGFloat = 48
     

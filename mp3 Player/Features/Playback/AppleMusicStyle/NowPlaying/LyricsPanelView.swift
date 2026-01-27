@@ -12,6 +12,7 @@ struct LyricsPanelView: View {
     @Environment(NowPlayingAdapter.self) var model
     let size: CGSize
     let safeArea: EdgeInsets
+    var animation: Namespace.ID
     
     // スクロール位置によるControlsVisibility切り替え用
     @State private var scrollOffset: CGFloat = 0
@@ -20,6 +21,11 @@ struct LyricsPanelView: View {
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
     
+    // Controls の高さ（シークバー上端まで）
+    private var controlsHeight: CGFloat {
+        model.controlsVisibility == .shown ? 280 : 0
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // Grip用のスペーサー（GripはLayer0で描画される）
@@ -27,8 +33,8 @@ struct LyricsPanelView: View {
                 .frame(height: ViewConst.gripSpaceHeight)
                 .padding(.top, safeArea.top)
             
-            // CompactTrackInfo（固定ヘッダ）
-            CompactTrackInfoView()
+            // CompactTrackInfo（固定ヘッダ）- matchedGeometryEffect適用
+            CompactTrackInfoView(animation: animation)
                 .padding(.horizontal, 20)
                 .padding(.top, ViewConst.contentTopPadding)
             
@@ -68,7 +74,7 @@ struct LyricsPanelView: View {
                     .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
                     .padding(.vertical, 20)
-                    .padding(.bottom, controlsBottomPadding)
+                    .padding(.bottom, controlsHeight + 60)
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "text.quote")
@@ -80,14 +86,9 @@ struct LyricsPanelView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 60)
-                .padding(.bottom, controlsBottomPadding)
+                .padding(.bottom, controlsHeight + 60)
             }
         }
-    }
-    
-    // Controls表示時は下部にパディングを追加
-    private var controlsBottomPadding: CGFloat {
-        model.controlsVisibility == .shown ? 280 : 60
     }
     
     // EdgeFade効果用のマスク
@@ -136,18 +137,29 @@ struct LyricsPanelView: View {
 
 struct CompactTrackInfoView: View {
     @Environment(NowPlayingAdapter.self) var model
+    var animation: Namespace.ID? = nil
     
     private let artworkSize: CGFloat = 80
     
     var body: some View {
         HStack(spacing: 16) {
-            // Artwork (80pt, 正方形)
-            ArtworkImageView(
-                artworkUri: model.display.artworkUri,
-                cornerRadius: 8,
-                contentMode: .fill
-            )
-            .frame(width: artworkSize, height: artworkSize)
+            // Artwork (80pt, 正方形) - matchedGeometryEffect適用
+            if let animation = animation {
+                ArtworkImageView(
+                    artworkUri: model.display.artworkUri,
+                    cornerRadius: 8,
+                    contentMode: .fill
+                )
+                .frame(width: artworkSize, height: artworkSize)
+                .matchedGeometryEffect(id: "artwork", in: animation)
+            } else {
+                ArtworkImageView(
+                    artworkUri: model.display.artworkUri,
+                    cornerRadius: 8,
+                    contentMode: .fill
+                )
+                .frame(width: artworkSize, height: artworkSize)
+            }
             
             // Title + Artist
             VStack(alignment: .leading, spacing: 4) {
