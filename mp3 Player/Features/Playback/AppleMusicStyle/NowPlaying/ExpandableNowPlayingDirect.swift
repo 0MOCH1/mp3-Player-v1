@@ -91,23 +91,26 @@ private struct RegularNowPlayingSimple: View {
     var safeArea: EdgeInsets
 
     var body: some View {
-        VStack(spacing: 0) {
-            grip
-                .blendMode(.overlay)
-                // Position grip equidistant from Dynamic Island bottom and artwork top
-                // Dynamic Island is typically at safeArea.top (around 59pt on iPhone with DI)
-                // Artwork starts at current position. Calculate the gap and center the grip.
-                .padding(.top, calculateGripTopPadding())
+        ZStack(alignment: .top) {
+            // Top-anchored elements (Grip and Artwork)
+            VStack(spacing: 0) {
+                grip
+                    .blendMode(.overlay)
+                    .padding(.top, calculateGripTopPadding())
 
-            artwork
-                .frame(height: size.width - 50)
-                .padding(.vertical, size.height < 700 ? 10 : 30)
-                .padding(.horizontal, 25)
-
+                artwork
+                    .frame(height: size.width - 50)
+                    .padding(.vertical, size.height < 700 ? 10 : 30)
+                    .padding(.horizontal, 25)
+            }
+            .padding(.top, safeArea.top)
+            .frame(maxHeight: .infinity, alignment: .top)
+            
+            // Bottom-anchored elements (Title to Footer)
             PlayerControls()
+                .padding(.bottom, safeArea.bottom)
+                .frame(maxHeight: .infinity, alignment: .bottom)
         }
-        .padding(.top, safeArea.top)
-        .padding(.bottom, safeArea.bottom)
     }
     
     var grip: some View {
