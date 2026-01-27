@@ -25,9 +25,9 @@ now_playing_spec_v8
 
 ## 2. デザイン踏襲要件
 2.1 **基本的なUIデザイン、見た目、配置、サイズ感は既存プロジェクトを踏襲**すること。実現方法は問わない。  
-2.2 **Controls の見た目は全状態で一貫**させること（表示時は常に同一のスタイル）。  
-2.3 **CompactTrackInfo の見た目も全状態で一貫**させること（固定表示でもリスト内でも同一スタイルに見える）。  
-2.4 **CompactTrackInfo の Artwork サイズは 70pt**（RoundedRectangle）とする。  
+!2.2 **Controls の見た目は全状態で一貫**させること（表示時は常に同一のスタイル）。  
+!2.3 **CompactTrackInfo の見た目も全状態で一貫**させること。  
+!2.4 **CompactTrackInfo の Artwork サイズは 70pt**（RoundedRectangle）とする。  
 2.5 **FullPlayer（標準再生UI）は現状実装されている画面と同一の見た目・体験**であること。内部構造が大幅に変わるため **作り直し実装でよい**（結果が一致すればOK）。
 
 ---
@@ -45,8 +45,8 @@ now_playing_spec_v8
 - 音量バー、再生/停止、スキップ、戻る、シークバー（経過/残り）、LyricsButton、QueueButton、AirPlayButton 等を含む「操作UI一式」
 
 3.4 **CompactTrackInfo**  
-- FullPlayer 内の Lyrics/Queue モードで表示される「縮小楽曲情報」コンポーネント（(Artwork + Title).leading (AddFavoriteButton(Toggle) + MenuButton).trailing の横並び）  
-- **Artwork は 75pt**固定（RoundedRectangle）
+!- FullPlayer 内の Lyrics/Queue モードで表示される「縮小楽曲情報」コンポーネント（(Artwork + Title).leading (AddFavoriteButton(Toggle) + MenuButton).trailing の横並び）  
+!- **Artwork は 75pt**固定（RoundedRectangle）
 
 3.5 **ContentPanel**  
 - FullPlayer 内で Mode に応じて切り替わる主要コンテンツ領域（LyricsPanel / QueuePanel などが入る）
@@ -79,38 +79,38 @@ now_playing_spec_v8
 - Mode に応じて切り替わるコンテンツ（NowPlaying: Artwork+Title, Lyrics: LyricsPanel, Queue: QueuePanel）
 
 4.4 **Layer2: Chrome**  
-- Controls（常に表示)
+!- Controls（常に表示)
 
 4.5 **CompactTrackInfo のレイヤ所属ルール**  
-- CompactTrackInfo は **表示位置を固定ヘッダ相当として画面上部に固定する**。  
+!- CompactTrackInfo は **表示位置を固定ヘッダ相当として画面上部に固定する**。  
 
 ---
 
-## 5. State Model
-5.1 状態は次の直交軸で定義する。
-
-5.2 **ScreenForm**  
-- **FullPlayer** / **MiniPlayer**
-
-5.3 **Mode**（排他）  
-- **NowPlaying** / **Lyrics** / **Queue**
+!## 5. State Model
+!5.1 状態は次の直交軸で定義する。
+!
+!5.2 **ScreenForm**  
+!- **FullPlayer** / **MiniPlayer**
+!
+!5.3 **Mode**（排他）  
+!- **NowPlaying** / **Lyrics** / **Queue**
 
 ---
 
 ## 6. FullPlayer（標準再生UI）
 6.1 **Entry**  
 - MiniPlayer をタップして FullPlayer へ遷移  
-- 前提：未再生、読み込み中はプレースホルダー
+!- 前提：未再生、読み込み中はプレースホルダー
 
 6.2 **UI（既存踏襲）**  
-- FullArtwork, ((Title, Artist), (AddFavoriteButton(toggle), MenuButton).trailing)
+!- FullArtwork, ((Title, Artist), (AddFavoriteButton(toggle), MenuButton).trailing)
 - SeekBar（elapsed/remaining）  
 - Controls（LyricsButton, QueueButton, AirPlayButton, Volume, Play/Pause, Skip, Back 等）  
 - 背景：Artwork 由来グラデーション（生成方法は裁量）
 
 6.3 **Gestures（既存踏襲）**  
 - 下方向ドラッグ：FullPlayer → MiniPlayer  
-- FullArtwork の左右スワイプ：Skip/Back (左右ドラッグのスケールアニメーション付き）
+!- FullArtwork の左右スワイプ：Skip/Back (左右ドラッグのスケールアニメーション付き）
 
 6.4 **Seek & Interaction Constraint**  
 - SeekBar は即時シーク  
@@ -163,26 +163,26 @@ now_playing_spec_v8
 - QueueButton で NowPlaying ↔ Queue をトグル（Lyricsとは排他）
 
 9.2 **Structure（順序固定）**   
-1) CompactTrackInfo（固定ヘッダー）
-2) QueueControls（固定ヘッダー）  
-3) CurrentQueue（現在再生中は含めない）（表示内容を差し替えられる(Queue/History)）
+!1) CompactTrackInfo（固定ヘッダー）
+!2) QueueControls（固定ヘッダー）  
+!3) CurrentQueue（現在再生中は含めない）（表示内容を差し替えられる(Queue/History)）
 
 9.3 **Skip/Back 操作**
 - Queue モード時は Controls 内の再生ボタン群を使用（FullArtwork スワイプは不可）
 
 9.4 **QueueSubstate: Reordering（必須）**  
-- CurrentQueue は常に並び替え可能（Reorder handle 等）  
+!- CurrentQueue は常に並び替え可能（Reorder handle 等）  
 
 9.5 **Row Actions / Labels**  
 - 左スワイプ削除：確認なし  
 - リストのラベルに追加元を明記（具体名まで）例：`Source: Album 1` `Source: Playlist 1` 
-- 行表示は TrackListView / TrackRowView を踏襲
+!- 行表示は TrackListView / TrackRowView を踏襲
 
-9.6 **History**
-- QueueControlのHistoryボタンをタップして、キューを表示していた部分に履歴を表示する。
-- 履歴内の曲をタップして再生を始めるか、ボタンのトグルを切り替えることで元の表示に戻る。
-- Sourceを表示しているラベルはHistoryに置き換わる。
-- 新たにQueuePanelに移動した際は、Queue表示をデフォルトとして表示する。
+!9.6 **History**
+!- QueueControlのHistoryボタンをタップして、キューを表示していた部分に履歴を表示する。
+!- 履歴内の曲をタップして再生を始めるか、ボタンのトグルを切り替えることで元の表示に戻る。
+!- Sourceを表示しているラベルはHistoryに置き換わる。
+!- 新たにQueuePanelに移動した際は、Queue表示をデフォルトとして表示する。
 
 9.7 **Empty State**  
 - CurrentQueue が空：`Queue is empty`  
