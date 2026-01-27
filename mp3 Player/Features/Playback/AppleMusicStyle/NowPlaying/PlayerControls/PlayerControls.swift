@@ -37,6 +37,7 @@ struct PlayerControls: View {
                 volume(playerSize: size)
                     .frame(height: size.height / 2.5, alignment: .bottom)
             }
+            .frame(maxHeight: .infinity, alignment: .bottom)
         }
     }
 }
