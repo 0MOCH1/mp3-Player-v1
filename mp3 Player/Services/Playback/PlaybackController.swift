@@ -1307,6 +1307,48 @@ private actor QueuePersistence {
             // Best effort; queue persistence can fail without blocking playback.
         }
     }
+    
+    // MARK: - History
+    
+    /// 最近再生した履歴を取得
+    func getRecentHistory(limit: Int = 20) async -> [(id: Int64, title: String, artist: String?, artworkUri: String?, playedAt: Date)] {
+        let dbPool = appDatabase.dbPool
+        let rows = (try? await dbPool.read { db -> [Row] in
+            try Row.fetchAll(
+                db,
+                sql: """
+                SELECT
+                    h.id AS history_id,
+                    h.played_at AS played_at,
+                    t.id AS track_id,
+                    COALESCE(mo.title, t.title) AS title,
+                    COALESCE(mo.artist_name, a.name) AS artist_name,
+                    COALESCE(ta.file_uri, aa.file_uri) AS artwork_uri
+                FROM history_entries h
+                JOIN tracks t ON t.source = h.source AND t.source_track_id = h.source_track_id
+                LEFT JOIN metadata_overrides mo ON mo.track_id = t.id
+                LEFT JOIN artists a ON a.id = t.artist_id
+                LEFT JOIN artworks ta ON ta.id = t.artwork_id
+                LEFT JOIN artworks aa ON aa.id = t.album_artwork_id
+                ORDER BY h.played_at DESC
+                LIMIT ?
+                """,
+                arguments: [limit]
+            )
+        }) ?? []
+        
+        return rows.compactMap { row -> (id: Int64, title: String, artist: String?, artworkUri: String?, playedAt: Date)? in
+            guard let historyId = row["history_id"] as Int64?,
+                  let playedAtTimestamp = row["played_at"] as Int64? else {
+                return nil
+            }
+            let title = row["title"] as String? ?? "Unknown Title"
+            let artist = row["artist_name"] as String?
+            let artworkUri = row["artwork_uri"] as String?
+            let playedAt = Date(timeIntervalSince1970: TimeInterval(playedAtTimestamp))
+            return (id: historyId, title: title, artist: artist, artworkUri: artworkUri, playedAt: playedAt)
+        }
+    }
 }
 
 private actor PlaybackPositionWriter {

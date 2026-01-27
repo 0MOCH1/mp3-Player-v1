@@ -209,9 +209,18 @@ class NowPlayingAdapter {
     
     /// Historyを読み込む
     func loadHistory() {
-        // TODO: PlaybackControllerにHistory取得機能を追加後、実装
-        // 現在はプレースホルダーとして空配列
-        // historyItems = controller.getRecentHistory(limit: 20)
+        Task { @MainActor in
+            let historyData = await controller.getRecentHistory(limit: 20)
+            self.historyItems = historyData.map { item in
+                HistoryItem(
+                    id: item.id,
+                    title: item.title,
+                    artist: item.artist,
+                    artworkUri: item.artworkUri,
+                    playedAt: item.playedAt
+                )
+            }
+        }
     }
     
     /// ControlsVisibilityを切り替え（Lyricsモード用）
