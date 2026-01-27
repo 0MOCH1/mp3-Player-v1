@@ -50,13 +50,24 @@ struct ExpandableNowPlayingDirect: View {
                 ContentPanelView(size: size, safeArea: safeArea)
                 
                 // ========================================
-                // Layer2: Chrome (Controls)
+                // Layer2: Chrome (Controls + TrackInfo)
                 // ========================================
                 if model.controlsVisibility == .shown {
-                    PlayerControls()
-                        .padding(.bottom, safeArea.bottom)
-                        .frame(maxHeight: .infinity, alignment: .bottom)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    VStack(spacing: 0) {
+                        Spacer()
+                        
+                        // TrackInfo - NowPlayingモードかつCompactTrackInfo非表示時のみ表示
+                        if model.playerMode == .nowPlaying {
+                            TrackInfoView()
+                                .padding(.horizontal, ViewConst.playerCardPaddings)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+                        
+                        // Controls
+                        PlayerControls()
+                            .padding(.bottom, safeArea.bottom)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .animation(.easeInOut(duration: 0.3), value: model.playerMode)
@@ -112,6 +123,43 @@ struct ExpandableNowPlayingDirect: View {
         Capsule()
             .fill(.white.secondary)
             .frame(width: ViewConst.gripWidth, height: ViewConst.gripHeight)
+    }
+}
+
+// ========================================
+// TrackInfo - 独立コンポーネント
+// NowPlayingモード時のみ表示される楽曲情報
+// ========================================
+struct TrackInfoView: View {
+    @Environment(NowPlayingAdapter.self) var model
+    
+    private var palette: Palette.PlayerCard.Type {
+        UIColor.palette.playerCard.self
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: -1) {
+            let fade = ViewConst.playerCardPaddings
+            let cfg = MarqueeText.Config(leftFade: fade, rightFade: fade)
+            // Title: title2, semibold
+            MarqueeText(model.display.title, config: cfg)
+                .transformEffect(.identity)
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color(palette.opaque))
+                .id(model.display.title)
+                .allowsHitTesting(false)
+            // Artist: title3
+            MarqueeText(model.display.subtitle ?? "", config: cfg)
+                .transformEffect(.identity)
+                .font(.title3)
+                .foregroundStyle(Color(palette.opaque))
+                .blendMode(.overlay)
+                .id(model.display.subtitle)
+                .allowsHitTesting(false)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .allowsHitTesting(false)
     }
 }
 

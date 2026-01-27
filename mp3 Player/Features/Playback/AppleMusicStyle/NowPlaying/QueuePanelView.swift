@@ -16,8 +16,10 @@ struct QueuePanelView: View {
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
     
-    // スクロール位置追跡用
-    @State private var lastNowPlayingY: CGFloat = 0
+    // Controls の高さ（シークバー上端まで）
+    private var controlsHeight: CGFloat {
+        model.controlsVisibility == .shown ? 280 : 0
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -26,9 +28,23 @@ struct QueuePanelView: View {
                 .frame(height: ViewConst.gripSpaceHeight)
                 .padding(.top, safeArea.top)
             
-            // QueuePanel本体
-            queueContent
-                .mask(edgeFadeMask)
+            // QueuePanel本体（EdgeFade適用、ただしQueueControlsは回避）
+            ZStack(alignment: .top) {
+                // スクロールコンテンツ
+                queueContent
+                    .mask(edgeFadeMask)
+                
+                // QueueControls（EdgeFade回避のため別レイヤ）
+                VStack {
+                    // CompactTrackInfoの高さ分スペース
+                    Spacer().frame(height: compactTrackInfoHeight + 16)
+                    
+                    // QueueControls (Shuffle / Repeat) - Capsule スタイル
+                    queueControlsView
+                    
+                    Spacer()
+                }
+            }
         }
         .frame(maxHeight: .infinity, alignment: .top)
     }
@@ -36,7 +52,7 @@ struct QueuePanelView: View {
     private var queueContent: some View {
         ScrollViewReader { scrollProxy in
             ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                LazyVStack(spacing: 0) {
                     // History セクション
                     historySection
                     
@@ -45,53 +61,30 @@ struct QueuePanelView: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
                         .id("nowPlaying")
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear.preference(
-                                    key: NowPlayingPositionPreferenceKey.self,
-                                    value: geo.frame(in: .named("queueScroll")).minY
-                                )
-                            }
-                        )
                     
-                    // QueueControls (Shuffle / Repeat) - sticky相当
-                    Section {
-                        currentQueueSection
-                    } header: {
-                        queueControlsView
-                    }
+                    // QueueControls用のスペース（実際のボタンは別レイヤ）
+                    Spacer().frame(height: 60)
+                    
+                    // CurrentQueue セクション
+                    currentQueueSection
                 }
-                .padding(.bottom, controlsBottomPadding)
+                .padding(.bottom, controlsHeight + 60)
             }
-            .coordinateSpace(name: "queueScroll")
-            .onPreferenceChange(NowPlayingPositionPreferenceKey.self) { minY in
-                // NowPlaying の位置を追跡して History Gate 判定
-                handleHistoryGate(nowPlayingMinY: minY, scrollProxy: scrollProxy)
-            }
-            .onAppear {
-                // 初期位置: CompactTrackInfoが上端に揃う
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    withAnimation {
-                        scrollProxy.scrollTo("nowPlaying", anchor: .top)
-                    }
-                }
-            }
+            .scrollPosition(id: .constant("nowPlaying"), anchor: .top)
         }
-    }
-    
-    // MARK: - History Gate Logic
-    
-    private func handleHistoryGate(nowPlayingMinY: CGFloat, scrollProxy: ScrollViewProxy) {
-        // History Gate: NowPlaying の位置を追跡
-        // Note: SwiftUI の ScrollView では onScrollEnd がないため、
-        // 完全なスナップ動作は制限される。初期スクロール位置で対応。
-        lastNowPlayingY = nowPlayingMinY
     }
     
     // MARK: - History Section
     
     private var historySection: some View {
-        Section {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("History")
+                .font(.headline)
+                .foregroundStyle(.white.opacity(0.8))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+            
             if model.historyItems.isEmpty {
                 Text("No history")
                     .font(.subheadline)
@@ -104,21 +97,14 @@ struct QueuePanelView: View {
                         .padding(.horizontal, 20)
                 }
             }
-        } header: {
-            Text("History")
-                .font(.headline)
-                .foregroundStyle(.white.opacity(0.8))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
         }
     }
     
-    // MARK: - QueueControls (Shuffle / Repeat)
+    // MARK: - QueueControls (Shuffle / Repeat) - Capsule Style
     
     private var queueControlsView: some View {
-        HStack(spacing: 24) {
-            // Shuffle ボタン
+        HStack(spacing: 16) {
+            // Shuffle ボタン - Capsule
             Button {
                 model.toggleShuffle()
             } label: {
@@ -126,12 +112,18 @@ struct QueuePanelView: View {
                     Image(systemName: "shuffle")
                         .font(.body.weight(.semibold))
                     Text("Shuffle")
-                        .font(.subheadline)
+                        .font(.subheadline.weight(.medium))
                 }
-                .foregroundStyle(model.isShuffleEnabled ? .white : .white.opacity(0.5))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(model.isShuffleEnabled ? .white : .white.opacity(0.15))
+                )
+                .foregroundStyle(model.isShuffleEnabled ? .black : .white)
             }
             
-            // Repeat ボタン
+            // Repeat ボタン - Capsule
             Button {
                 model.cycleRepeat()
             } label: {
@@ -139,16 +131,19 @@ struct QueuePanelView: View {
                     Image(systemName: repeatIcon)
                         .font(.body.weight(.semibold))
                     Text(repeatLabel)
-                        .font(.subheadline)
+                        .font(.subheadline.weight(.medium))
                 }
-                .foregroundStyle(model.repeatMode != .off ? .white : .white.opacity(0.5))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(model.repeatMode != .off ? .white : .white.opacity(0.15))
+                )
+                .foregroundStyle(model.repeatMode != .off ? .black : .white)
             }
-            
-            Spacer()
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial.opacity(0.3))
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.vertical, 8)
     }
     
     private var repeatIcon: String {
@@ -169,7 +164,17 @@ struct QueuePanelView: View {
     // MARK: - CurrentQueue Section
     
     private var currentQueueSection: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 0) {
+            // Source ラベル（リストのラベルとして表示）
+            if let currentItem = model.currentItem, let sourceLabel = currentItem.sourceLabel {
+                Text("Playing from \(sourceLabel)")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+            }
+            
             if model.queueItems.isEmpty {
                 Text("Queue is empty")
                     .font(.subheadline)
@@ -177,28 +182,19 @@ struct QueuePanelView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
             } else {
+                // List with reorder support
                 ForEach(Array(model.queueItems.enumerated()), id: \.element.id) { index, item in
                     QueueRowView(
                         item: item,
-                        isNowPlaying: false,
                         onDelete: {
                             model.removeFromQueue(at: index)
-                        }
+                        },
+                        onMove: { }
                     )
                     .padding(.horizontal, 20)
                 }
-                .onMove { fromOffsets, toOffset in
-                    model.startReordering()
-                    model.moveQueue(fromOffsets: fromOffsets, toOffset: toOffset)
-                    model.endReordering()
-                }
             }
         }
-    }
-    
-    // Controls表示時は下部にパディングを追加
-    private var controlsBottomPadding: CGFloat {
-        model.controlsVisibility == .shown ? 280 : 60
     }
     
     // EdgeFade効果用のマスク
@@ -231,8 +227,8 @@ struct QueuePanelView: View {
 
 private struct QueueRowView: View {
     let item: PlaybackItem
-    let isNowPlaying: Bool
     let onDelete: () -> Void
+    let onMove: () -> Void
     
     private let artworkSize: CGFloat = 48
     
@@ -252,7 +248,7 @@ private struct QueueRowView: View {
                     }
             }
             
-            // Title + Artist + Source
+            // Title + Artist（Sourceは行ではなくセクションラベルで表示）
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.callout)
@@ -265,19 +261,11 @@ private struct QueueRowView: View {
                         .foregroundStyle(.white.opacity(0.6))
                         .lineLimit(1)
                 }
-                
-                // Source label (追加元: アルバム名またはプレイリスト名)
-                if let sourceLabel = item.sourceLabel {
-                    Text("Source: \(sourceLabel)")
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.4))
-                        .lineLimit(1)
-                }
             }
             
             Spacer()
             
-            // Reorder handle (常時表示)
+            // Reorder handle
             Image(systemName: "line.3.horizontal")
                 .font(.body)
                 .foregroundStyle(.white.opacity(0.4))
