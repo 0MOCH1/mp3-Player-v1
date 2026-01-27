@@ -22,8 +22,11 @@ extension ViewConst {
     static let gripTopPadding: CGFloat = 8
     /// Grip用のスペース（GripはLayer0で描画されるため、ContentPanelではスペースのみ確保）
     static var gripSpaceHeight: CGFloat {
-        gripTopPadding + gripHeight + gripTopPadding // topPadding + gripHeight + spacing
+        gripTopPadding + gripHeight + gripTopPadding // topPadding + gripHeight + bottomPadding
     }
+    
+    // ContentPanel spacing
+    static let contentTopPadding: CGFloat = 8
     
     static var safeAreaInsets: EdgeInsets {
         if let windowScene = UIApplication.shared.connectedScenes

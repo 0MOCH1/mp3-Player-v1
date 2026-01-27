@@ -30,7 +30,7 @@ struct LyricsPanelView: View {
             // CompactTrackInfo（固定ヘッダ）
             CompactTrackInfoView()
                 .padding(.horizontal, 20)
-                .padding(.top, 8)
+                .padding(.top, ViewConst.contentTopPadding)
             
             // LyricsPanel本体（スクロール可能）
             lyricsScrollView
