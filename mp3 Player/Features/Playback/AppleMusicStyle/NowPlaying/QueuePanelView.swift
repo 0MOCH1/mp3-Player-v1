@@ -67,14 +67,17 @@ struct QueuePanelView: View {
     
     private var historySection: some View {
         Section {
-            // TODO: History機能はPlaybackControllerから取得
-            // 現在は空のプレースホルダー
-            if false { // historyItems.isEmpty の代わり
+            if model.historyItems.isEmpty {
                 Text("No history")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.5))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
+            } else {
+                ForEach(model.historyItems) { item in
+                    HistoryRowView(item: item)
+                        .padding(.horizontal, 20)
+                }
             }
         } header: {
             Text("History")
@@ -255,5 +258,50 @@ private struct QueueRowView: View {
                 Label("Delete", systemImage: "trash")
             }
         }
+    }
+}
+
+// MARK: - HistoryRowView
+
+private struct HistoryRowView: View {
+    let item: HistoryItem
+    
+    private let artworkSize: CGFloat = 48
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Artwork (Rectangle = 角丸なし)
+            if let artworkUri = item.artworkUri {
+                ArtworkImageView(artworkUri: artworkUri, cornerRadius: 0, contentMode: .fill)
+                    .frame(width: artworkSize, height: artworkSize)
+            } else {
+                Rectangle()
+                    .fill(.white.opacity(0.1))
+                    .frame(width: artworkSize, height: artworkSize)
+                    .overlay {
+                        Image(systemName: "music.note")
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+            }
+            
+            // Title + Artist
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(.callout)
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                
+                if let artist = item.artist {
+                    Text(artist)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
     }
 }

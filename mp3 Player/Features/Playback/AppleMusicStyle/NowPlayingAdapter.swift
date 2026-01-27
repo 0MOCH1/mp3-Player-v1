@@ -28,6 +28,15 @@ enum QueueSubstate: Equatable {
     case reordering
 }
 
+/// History用の簡易アイテム
+struct HistoryItem: Identifiable, Equatable {
+    let id: Int64
+    let title: String
+    let artist: String?
+    let artworkUri: String?
+    let playedAt: Date
+}
+
 // MARK: - NowPlayingAdapter
 
 @MainActor
@@ -45,6 +54,9 @@ class NowPlayingAdapter {
     private(set) var queueItems: [PlaybackItem] = []
     private(set) var isShuffleEnabled: Bool = false
     private(set) var repeatMode: RepeatMode = .off
+    
+    // History items for Queue panel
+    private(set) var historyItems: [HistoryItem] = []
     
     // State Model properties
     var playerMode: PlayerMode = .nowPlaying
@@ -190,7 +202,16 @@ class NowPlayingAdapter {
             playerMode = .queue
             controlsVisibility = .shown
             queueSubstate = .browsing
+            // Queueモードに入る時にHistoryを更新
+            loadHistory()
         }
+    }
+    
+    /// Historyを読み込む
+    func loadHistory() {
+        // TODO: PlaybackControllerにHistory取得機能を追加後、実装
+        // 現在はプレースホルダーとして空配列
+        // historyItems = controller.getRecentHistory(limit: 20)
     }
     
     /// ControlsVisibilityを切り替え（Lyricsモード用）
