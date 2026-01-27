@@ -211,7 +211,7 @@ struct QueuePanelView: View {
                     .padding(.horizontal, 20)
                     .onDrag {
                         model.startReordering()
-                        return NSItemProvider(object: item.id as NSString)
+                        return NSItemProvider(object: String(item.id) as NSString)
                     }
                     .onDrop(of: [.text], delegate: QueueDropDelegate(
                         item: item,
