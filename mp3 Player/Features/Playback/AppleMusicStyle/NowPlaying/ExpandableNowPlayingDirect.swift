@@ -113,8 +113,9 @@ struct ExpandableNowPlayingDirect: View {
                         }
                     }
             )
-            .ignoresSafeArea(.all)
+            .ignoresSafeArea()
         }
+        .background(Color.clear) // Transparent background
         .onAppear {
             model.onAppear()
             // Get the device's actual corner radius
