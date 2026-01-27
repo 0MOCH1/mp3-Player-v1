@@ -192,7 +192,7 @@ struct QueuePanelView: View {
                         }
                     )
                     .padding(.horizontal, 20)
-                    .draggable(item.id) {
+                    .draggable(String(item.id)) {
                         // Drag preview
                         Text(item.title)
                             .padding(8)
@@ -200,7 +200,8 @@ struct QueuePanelView: View {
                             .cornerRadius(8)
                     }
                     .dropDestination(for: String.self) { items, location in
-                        guard let draggedId = items.first,
+                        guard let draggedIdString = items.first,
+                              let draggedId = Int64(draggedIdString),
                               let fromIndex = model.queueItems.firstIndex(where: { $0.id == draggedId }) else {
                             return false
                         }
