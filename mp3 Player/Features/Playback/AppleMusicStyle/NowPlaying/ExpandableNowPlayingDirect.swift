@@ -16,8 +16,8 @@ struct ExpandableNowPlayingDirect: View {
     @Environment(\.colorScheme) var colorScheme
     
     // Controls の高さ（シークバー上端まで）
-    // SeekBar(40) + Buttons spacing(30) + Buttons(60) + Volume spacing(30) + Volume(40) + Footer spacing(10) + Footer(40) + bottom padding = 250 + safeArea.bottom + 3
-    private var controlsHeight: CGFloat { 250 }
+    // 計算: SeekBar(40) + Buttons spacing(30) + Buttons(60) + Volume spacing(30) + Volume(40) + Footer spacing(10) + Footer(40) = 250
+    private let controlsHeight: CGFloat = 250
 
     var body: some View {
         GeometryReader {
@@ -56,30 +56,27 @@ struct ExpandableNowPlayingDirect: View {
                 // ========================================
                 // Layer2: Chrome (Controls + TrackInfo)
                 // ========================================
-                VStack(spacing: 0) {
-                    Spacer()
-                        .allowsHitTesting(false) // Spacerはタッチを通過させる
-                    
-                    // TrackInfo - NowPlayingモードかつCompactTrackInfo非表示時のみ表示
-                    // シークバーの30pt上に配置
-                    if model.playerMode == .nowPlaying && model.controlsVisibility == .shown {
-                        TrackInfoView()
-                            .padding(.horizontal, ViewConst.playerCardPaddings)
-                            .padding(.bottom, ViewConst.seekBarToTrackInfoSpacing)
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .move(edge: .bottom)),
-                                removal: .opacity.combined(with: .move(edge: .top))
-                            ))
-                    }
-                    
-                    // Controls
-                    if model.controlsVisibility == .shown {
+                if model.controlsVisibility == .shown {
+                    VStack(spacing: 0) {
+                        Spacer()
+                        
+                        // TrackInfo - NowPlayingモードかつCompactTrackInfo非表示時のみ表示
+                        if model.playerMode == .nowPlaying {
+                            TrackInfoView()
+                                .padding(.horizontal, ViewConst.playerCardPaddings)
+                                .padding(.bottom, ViewConst.seekBarToTrackInfoSpacing)
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .move(edge: .bottom)),
+                                    removal: .opacity.combined(with: .move(edge: .top))
+                                ))
+                        }
+                        
+                        // Controls
                         PlayerControls()
                             .padding(.bottom, safeArea.bottom + ViewConst.bottomToFooterPadding)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .animation(.easeInOut(duration: ViewConst.animationDuration), value: model.playerMode)
             .animation(.easeInOut(duration: ViewConst.animationDuration), value: model.controlsVisibility)
@@ -118,7 +115,6 @@ struct ExpandableNowPlayingDirect: View {
             )
             .ignoresSafeArea(.all)
         }
-        .ignoresSafeArea(.all)
         .onAppear {
             model.onAppear()
             // Get the device's actual corner radius
