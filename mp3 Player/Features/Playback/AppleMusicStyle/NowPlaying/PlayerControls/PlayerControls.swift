@@ -23,8 +23,6 @@ struct PlayerControls: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            
             // シークバー
             let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
             TimingIndicator(spacing: 0)

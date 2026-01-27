@@ -13,6 +13,8 @@ struct ContentView: View {
     @Environment(\.playbackController) private var playbackController
     @State private var didStartScan = false
     @State private var showsNowPlaying = false
+    @Namespace private var zoomNamespace
+    private let miniPlayerSourceID = "miniPlayer"
 
     var body: some View {
         TabView {
@@ -34,6 +36,7 @@ struct ContentView: View {
                 MiniPlayerAccessory(controller: controller) {
                     showsNowPlaying = true
                 }
+                .matchedTransitionSource(id: miniPlayerSourceID, in: zoomNamespace)
                 .tint(.black)
             }
         }
@@ -43,6 +46,7 @@ struct ContentView: View {
         }
         .fullScreenCover(isPresented: $showsNowPlaying) {
             AppleMusicNowPlayingView()
+                .navigationTransition(.zoom(sourceID: miniPlayerSourceID, in: zoomNamespace))
                 .background(Color.clear) // Transparent background so app content shows through
                 .presentationBackground(.clear) // iOS 16.4+ presentation background
         }

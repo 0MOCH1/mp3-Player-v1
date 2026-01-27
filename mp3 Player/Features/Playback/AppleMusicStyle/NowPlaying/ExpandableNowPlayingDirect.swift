@@ -57,8 +57,8 @@ struct ExpandableNowPlayingDirect: View {
                 // Layer2: Chrome (Controls + TrackInfo)
                 // ========================================
                 if model.controlsVisibility == .shown {
-                    VStack(spacing: 0) {
-                        Spacer()
+                    VStack(alignment: .center, spacing: 0) {
+                        Spacer(minLength: 0)
                         
                         // TrackInfo - NowPlayingモードかつCompactTrackInfo非表示時のみ表示
                         if model.playerMode == .nowPlaying {
@@ -75,6 +75,7 @@ struct ExpandableNowPlayingDirect: View {
                         PlayerControls()
                             .padding(.bottom, safeArea.bottom + ViewConst.bottomToFooterPadding)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
