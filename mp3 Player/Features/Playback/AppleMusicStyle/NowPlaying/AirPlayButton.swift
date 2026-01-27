@@ -9,8 +9,13 @@ import SwiftUI
 import AVKit
 
 struct AirPlayButton: View {
+    // サイズを指定可能にして他のボタンと合わせる
+    var size: CGFloat = 28
+    var fontWeight: Font.Weight = .semibold
+    
     var body: some View {
         AirPlayButtonRepresentable()
+            .frame(width: size, height: size)
             .blendMode(.overlay)
     }
 }
@@ -28,6 +33,11 @@ private struct AirPlayButtonRepresentable: UIViewRepresentable {
         for subview in routePickerView.subviews {
             if let button = subview as? UIButton {
                 button.contentMode = .scaleAspectFit
+                // フォントサイズを設定
+                button.setPreferredSymbolConfiguration(
+                    UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold),
+                    forImageIn: .normal
+                )
             }
         }
         

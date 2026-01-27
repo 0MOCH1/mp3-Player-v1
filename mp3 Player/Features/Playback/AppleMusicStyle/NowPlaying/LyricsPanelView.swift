@@ -142,12 +142,13 @@ struct CompactTrackInfoView: View {
     @Environment(NowPlayingAdapter.self) var model
     var animation: Namespace.ID? = nil
     
-    // v8仕様: CompactTrackInfo の Artwork サイズは 75pt
-    private let artworkSize: CGFloat = 75
+    // v8仕様: CompactTrackInfo の Artwork サイズは 72pt
+    private let artworkSize: CGFloat = 72
+    private let buttonSize: CGFloat = 32
     
     var body: some View {
-        HStack(spacing: 16) {
-            // Artwork (80pt, 正方形) - matchedGeometryEffect適用
+        HStack(spacing: 12) {
+            // Artwork (72pt, 正方形, RoundedRectangle) - matchedGeometryEffect適用
             if let animation = animation {
                 ArtworkImageView(
                     artworkUri: model.display.artworkUri,
@@ -181,6 +182,34 @@ struct CompactTrackInfoView: View {
             }
             
             Spacer()
+            
+            // AddFavoriteButton (32pt circle, star/star.fill toggle)
+            Button {
+                model.toggleFavorite()
+            } label: {
+                Image(systemName: model.isFavorite ? "star.fill" : "star")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(width: buttonSize, height: buttonSize)
+                    .background(
+                        Circle()
+                            .fill(.white.opacity(0.15))
+                    )
+            }
+            
+            // MenuButton (32pt circle, ellipsis)
+            Button {
+                // TODO: Show menu
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(width: buttonSize, height: buttonSize)
+                    .background(
+                        Circle()
+                            .fill(.white.opacity(0.15))
+                    )
+            }
         }
         .padding(.vertical, 8)
     }

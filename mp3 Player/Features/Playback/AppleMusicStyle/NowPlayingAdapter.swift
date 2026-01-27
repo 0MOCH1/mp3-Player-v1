@@ -58,6 +58,9 @@ class NowPlayingAdapter {
     // History items for Queue panel
     private(set) var historyItems: [HistoryItem] = []
     
+    // Favorite state for CompactTrackInfo
+    private(set) var isFavorite: Bool = false
+    
     // State Model properties
     var playerMode: PlayerMode = .nowPlaying
     var controlsVisibility: ControlsVisibility = .shown
@@ -285,6 +288,12 @@ class NowPlayingAdapter {
     /// 履歴から再生を開始 (v8仕様)
     func playFromHistory(item: HistoryItem) {
         controller.playFromHistoryById(item.id)
+    }
+    
+    /// お気に入りをトグル
+    func toggleFavorite() {
+        isFavorite.toggle()
+        // TODO: Persist favorite state to database
     }
     
     func updateColors() {

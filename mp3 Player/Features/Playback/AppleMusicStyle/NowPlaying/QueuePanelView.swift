@@ -66,63 +66,54 @@ struct QueuePanelView: View {
     // MARK: - QueueControls (固定ヘッダー)
     // v8仕様: Shuffle / Repeat / History ボタン
     
+    // QueueControls: アイコンのみ、高さ40pt
+    private let queueControlButtonHeight: CGFloat = 40
+    
     private var queueControlsView: some View {
         HStack(spacing: 12) {
-            // Shuffle ボタン
+            // Shuffle ボタン（アイコンのみ）
             Button {
                 model.toggleShuffle()
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "shuffle")
-                        .font(.body.weight(.semibold))
-                    Text("Shuffle")
-                        .font(.subheadline.weight(.medium))
-                }
-                .padding(.horizontal, ViewConst.queueControlsHorizontalPadding)
-                .padding(.vertical, ViewConst.queueControlsVerticalPadding)
-                .background(
-                    Capsule()
-                        .fill(model.isShuffleEnabled ? .white : .white.opacity(0.15))
-                )
-                .foregroundStyle(model.isShuffleEnabled ? .black : .white)
+                Image(systemName: "shuffle")
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(height: queueControlButtonHeight)
+                    .padding(.horizontal, 20)
+                    .background(
+                        Capsule()
+                            .fill(model.isShuffleEnabled ? .white : .white.opacity(0.15))
+                    )
+                    .foregroundStyle(model.isShuffleEnabled ? .black : .white)
             }
             
-            // Repeat ボタン
+            // Repeat ボタン（アイコンのみ）
             Button {
                 model.cycleRepeat()
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: repeatIcon)
-                        .font(.body.weight(.semibold))
-                    Text(repeatLabel)
-                        .font(.subheadline.weight(.medium))
-                }
-                .padding(.horizontal, ViewConst.queueControlsHorizontalPadding)
-                .padding(.vertical, ViewConst.queueControlsVerticalPadding)
-                .background(
-                    Capsule()
-                        .fill(model.repeatMode != .off ? .white : .white.opacity(0.15))
-                )
-                .foregroundStyle(model.repeatMode != .off ? .black : .white)
+                Image(systemName: repeatIcon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(height: queueControlButtonHeight)
+                    .padding(.horizontal, 20)
+                    .background(
+                        Capsule()
+                            .fill(model.repeatMode != .off ? .white : .white.opacity(0.15))
+                    )
+                    .foregroundStyle(model.repeatMode != .off ? .black : .white)
             }
             
-            // History ボタン - v8仕様: トグルでQueue/History切り替え
+            // History ボタン（アイコンのみ）- v8仕様: トグルでQueue/History切り替え
             Button {
                 showingHistory.toggle()
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.body.weight(.semibold))
-                    Text("History")
-                        .font(.subheadline.weight(.medium))
-                }
-                .padding(.horizontal, ViewConst.queueControlsHorizontalPadding)
-                .padding(.vertical, ViewConst.queueControlsVerticalPadding)
-                .background(
-                    Capsule()
-                        .fill(showingHistory ? .white : .white.opacity(0.15))
-                )
-                .foregroundStyle(showingHistory ? .black : .white)
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(height: queueControlButtonHeight)
+                    .padding(.horizontal, 20)
+                    .background(
+                        Capsule()
+                            .fill(showingHistory ? .white : .white.opacity(0.15))
+                    )
+                    .foregroundStyle(showingHistory ? .black : .white)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -133,14 +124,6 @@ struct QueuePanelView: View {
         switch model.repeatMode {
         case .off, .all: return "repeat"
         case .one: return "repeat.1"
-        }
-    }
-    
-    private var repeatLabel: String {
-        switch model.repeatMode {
-        case .off: return "Repeat"
-        case .all: return "All"
-        case .one: return "One"
         }
     }
     
