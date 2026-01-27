@@ -12,9 +12,14 @@ struct PlayerControls: View {
     @State private var volume: Double = 0.5
     @State private var showLyrics = false
     @State private var showQueue = false
-    // Toggle states for lyrics and queue buttons
-    @State private var lyricsToggled = false
-    @State private var queueToggled = false
+    
+    // Toggle states derived from model.playerMode
+    private var lyricsToggled: Bool {
+        model.playerMode == .lyrics
+    }
+    private var queueToggled: Bool {
+        model.playerMode == .queue
+    }
 
     var body: some View {
         GeometryReader {
@@ -98,8 +103,8 @@ private extension PlayerControls {
         HStack(alignment: .center, spacing: 80) {
             // Lyrics button with circle background
             Button {
-                withAnimation(.easeInOut(duration: 0.03)) {
-                    lyricsToggled.toggle()
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    model.toggleLyrics()
                 }
             } label: {
                 ZStack {
@@ -130,8 +135,8 @@ private extension PlayerControls {
             
             // Queue button with circle background
             Button {
-                withAnimation(.easeInOut(duration: 0.03)) {
-                    queueToggled.toggle()
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    model.toggleQueue()
                 }
             } label: {
                 ZStack {
@@ -140,11 +145,34 @@ private extension PlayerControls {
                         .frame(width: 40, height: 40)
                         .blendMode(queueToggled ? .normal : .overlay)
                     
-                    Image(systemName: "list.bullet")
-                        .font(.system(size: 21, weight: .semibold))
-                        .foregroundStyle(queueToggled ? .black.opacity(0.6) : Color(palette.opaque))
-                        .blendMode(queueToggled ? .normal : .overlay)
+                    queueButtonIcon
                 }
+            }
+        }
+    }
+    
+    // Queue button with shuffle/repeat indicators
+    private var queueButtonIcon: some View {
+        ZStack {
+            Image(systemName: "list.bullet")
+                .font(.system(size: 21, weight: .semibold))
+                .foregroundStyle(queueToggled ? .black.opacity(0.6) : Color(palette.opaque))
+                .blendMode(queueToggled ? .normal : .overlay)
+            
+            // Shuffle indicator (top-right)
+            if model.isShuffleEnabled {
+                Image(systemName: "shuffle")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(queueToggled ? .black.opacity(0.6) : Color(palette.opaque))
+                    .offset(x: 12, y: -10)
+            }
+            
+            // Repeat indicator (bottom-right)
+            if model.repeatMode != .off {
+                Image(systemName: model.repeatMode == .one ? "repeat.1" : "repeat")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(queueToggled ? .black.opacity(0.6) : Color(palette.opaque))
+                    .offset(x: 12, y: 10)
             }
         }
     }

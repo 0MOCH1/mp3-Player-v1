@@ -92,25 +92,43 @@ private struct RegularNowPlayingSimple: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Top-anchored elements (Grip and Artwork)
-            VStack(spacing: 0) {
-                grip
-                    .blendMode(.overlay)
-                    .padding(.top, calculateGripTopPadding())
-
-                artwork
-                    .frame(height: size.width - 50)
-                    .padding(.vertical, size.height < 700 ? 10 : 30)
-                    .padding(.horizontal, 25)
+            // ContentPanel - Mode に応じて切り替わるコンテンツ
+            switch model.playerMode {
+            case .nowPlaying:
+                nowPlayingContent
+            case .lyrics:
+                LyricsPanelView(size: size, safeArea: safeArea)
+            case .queue:
+                QueuePanelView(size: size, safeArea: safeArea)
             }
-            .padding(.top, safeArea.top)
-            .frame(maxHeight: .infinity, alignment: .top)
             
-            // Bottom-anchored elements (Title to Footer)
-            PlayerControls()
-                .padding(.bottom, safeArea.bottom)
-                .frame(maxHeight: .infinity, alignment: .bottom)
+            // Bottom-anchored elements (Controls) - Shown時のみ表示
+            if model.controlsVisibility == .shown {
+                PlayerControls()
+                    .padding(.bottom, safeArea.bottom)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
+        .animation(.easeInOut(duration: 0.3), value: model.playerMode)
+        .animation(.easeInOut(duration: 0.25), value: model.controlsVisibility)
+    }
+    
+    // MARK: - NowPlaying Content (既存のArtwork + Grip)
+    
+    private var nowPlayingContent: some View {
+        VStack(spacing: 0) {
+            grip
+                .blendMode(.overlay)
+                .padding(.top, calculateGripTopPadding())
+
+            artwork
+                .frame(height: size.width - 50)
+                .padding(.vertical, size.height < 700 ? 10 : 30)
+                .padding(.horizontal, 25)
+        }
+        .padding(.top, safeArea.top)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
     
     var grip: some View {
