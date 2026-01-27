@@ -227,7 +227,7 @@ private struct QueueRowView: View {
                     }
             }
             
-            // Title + Artist
+            // Title + Artist + Source
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.callout)
@@ -238,6 +238,14 @@ private struct QueueRowView: View {
                     Text(artist)
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+                
+                // Source label (追加元: アルバム名またはプレイリスト名)
+                if let sourceLabel = item.sourceLabel {
+                    Text("Source: \(sourceLabel)")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.4))
                         .lineLimit(1)
                 }
             }

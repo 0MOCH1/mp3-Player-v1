@@ -119,7 +119,13 @@ struct FavoritesPlaylistView: View {
 
     private func playTrack(_ track: FavoriteTrackItem) {
         guard let index = viewModel.trackIds.firstIndex(of: track.id) else { return }
-        playbackController.setQueue(trackIds: viewModel.trackIds, startAt: index, playImmediately: true)
+        playbackController.setQueue(
+            trackIds: viewModel.trackIds,
+            startAt: index,
+            playImmediately: true,
+            sourceName: "Favorites",
+            sourceType: .playlist
+        )
     }
 
     private func enqueueNext(trackId: Int64) {

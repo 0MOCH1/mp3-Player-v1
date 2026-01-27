@@ -107,9 +107,18 @@ final class PlaybackController: ObservableObject {
         refreshQueueArtwork()
     }
 
-    func setQueue(trackIds: [Int64], startAt index: Int = 0, playImmediately: Bool = true) {
+    func setQueue(trackIds: [Int64], startAt index: Int = 0, playImmediately: Bool = true, sourceName: String? = nil, sourceType: QueueSourceType = .unknown) {
         Task {
-            let items = await fetchPlaybackItemsAsync(trackIds: trackIds)
+            var items = await fetchPlaybackItemsAsync(trackIds: trackIds)
+            // ソース情報を設定
+            if sourceName != nil || sourceType != .unknown {
+                items = items.map { item in
+                    var mutableItem = item
+                    mutableItem.queueSourceName = sourceName
+                    mutableItem.queueSourceType = sourceType
+                    return mutableItem
+                }
+            }
             queue = items
             queueItems = items
             persistQueueSnapshot(items)

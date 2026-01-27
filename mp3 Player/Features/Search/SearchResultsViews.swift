@@ -223,7 +223,13 @@ struct SearchTrackResultsView: View {
     private func playTrack(_ track: SearchTrackResult) {
         let ids = results.map { $0.id }
         guard let index = results.firstIndex(where: { $0.id == track.id }) else { return }
-        playbackController.setQueue(trackIds: ids, startAt: index, playImmediately: true)
+        playbackController.setQueue(
+            trackIds: ids,
+            startAt: index,
+            playImmediately: true,
+            sourceName: "Search Results",
+            sourceType: .search
+        )
     }
 
     private func enqueueNext(trackId: Int64) {
@@ -321,7 +327,13 @@ struct SearchLyricsResultsView: View {
     private func playTrack(_ track: SearchLyricsResult) {
         let ids = results.map { $0.id }
         guard let index = results.firstIndex(where: { $0.id == track.id }) else { return }
-        playbackController.setQueue(trackIds: ids, startAt: index, playImmediately: true)
+        playbackController.setQueue(
+            trackIds: ids,
+            startAt: index,
+            playImmediately: true,
+            sourceName: "Search Results",
+            sourceType: .search
+        )
     }
 
     private func enqueueNext(trackId: Int64) {
