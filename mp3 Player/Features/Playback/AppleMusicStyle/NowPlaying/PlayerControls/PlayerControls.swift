@@ -26,6 +26,8 @@ struct PlayerControls: View {
     private let volumeToPlayerButtonsSpacing: CGFloat = 70
     private let playerButtonsToSeekBarSpacing: CGFloat = 70
     private let seekBarToTrackInfoSpacing: CGFloat = 30
+    private let timingIndicatorSpacing: CGFloat = 0
+    private let playerButtonsSpacing: CGFloat = 50
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,14 +35,14 @@ struct PlayerControls: View {
             
             // シークバー
             let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
-            TimingIndicator(spacing: 0)
+            TimingIndicator(spacing: timingIndicatorSpacing)
                 .padding(.horizontal, indicatorPadding)
             
-            // 30pt spacing
+            // 30pt spacing (seekBar to playerButtons, but labeled as toTrackInfo for clarity)
             Spacer().frame(height: seekBarToTrackInfoSpacing)
             
             // Player buttons
-            PlayerButtons(spacing: 50)
+            PlayerButtons(spacing: playerButtonsSpacing)
                 .padding(.horizontal, ViewConst.playerCardPaddings)
             
             // 70pt spacing
