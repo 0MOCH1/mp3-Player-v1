@@ -91,7 +91,7 @@ private struct RegularNowPlayingSimple: View {
     var safeArea: EdgeInsets
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 0) {
             grip
                 .blendMode(.overlay)
                 // Position grip equidistant from Dynamic Island bottom and artwork top

@@ -88,8 +88,8 @@ private extension PlayerControls {
             footer(width: playerSize.width)
                 // 5pt closer: verticalSpacing-35
                 .padding(.top, playerSize.verticalSpacing - 35)
-                // 5pt less: 20pt
-                .padding(.bottom, 20)
+                // 3pt less: 17pt
+                .padding(.bottom, 17)
                 .padding(.horizontal, ViewConst.playerCardPaddings)
         }
     }
@@ -99,18 +99,18 @@ private extension PlayerControls {
         HStack(alignment: .center, spacing: 80) {
             // Lyrics button with circle background
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.easeInOut(duration: 0.03)) {
                     lyricsToggled.toggle()
                 }
             } label: {
                 ZStack {
                     Circle()
                         .fill(lyricsToggled ? Color(palette.opaque) : Color(palette.opaque).opacity(0))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 40, height: 40)
                         .blendMode(lyricsToggled ? .normal : .overlay)
                     
                     Image(systemName: lyricsToggled ? "quote.bubble.fill" : "quote.bubble")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 21, weight: .semibold))
                         .foregroundStyle(lyricsToggled ? .black.opacity(0.6) : Color(palette.opaque))
                         .blendMode(lyricsToggled ? .normal : .overlay)
                 }
@@ -122,7 +122,7 @@ private extension PlayerControls {
             } label: {
                 VStack(spacing: 0) {
                     AirPlayButton()
-                        .frame(height: 20)
+                        .frame(width: 35, height: 35) 
                         .colorMultiply(Color(palette.opaque)) // Match other button colors
                         .blendMode(.overlay)
                 }
@@ -131,18 +131,18 @@ private extension PlayerControls {
             
             // Queue button with circle background
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.easeInOut(duration: 0.03)) {
                     queueToggled.toggle()
                 }
             } label: {
                 ZStack {
                     Circle()
                         .fill(queueToggled ? Color(palette.opaque) : Color(palette.opaque).opacity(0))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 40, height: 40)
                         .blendMode(queueToggled ? .normal : .overlay)
                     
                     Image(systemName: "list.bullet")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 21, weight: .semibold))
                         .foregroundStyle(queueToggled ? .black.opacity(0.6) : Color(palette.opaque))
                         .blendMode(queueToggled ? .normal : .overlay)
                 }
