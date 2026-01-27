@@ -26,17 +26,41 @@ struct ExpandableNowPlayingDirect: View {
             let _ = dragProgress * deviceCornerRadius
 
             ZStack(alignment: .top) {
+                // ========================================
+                // Layer0: Background & Grip
+                // ========================================
                 NowPlayingBackground(
                     colors: model.colors.map { Color($0.color) },
                     expanded: true,
                     isFullExpanded: true
                 )
                 
-                RegularNowPlayingSimple(
-                    size: size,
-                    safeArea: safeArea
-                )
+                // Grip（ドラッグ操作のヒット領域）- Layer0に属する
+                VStack {
+                    grip
+                        .blendMode(.overlay)
+                        .padding(.top, 8)
+                        .padding(.top, safeArea.top)
+                    Spacer()
+                }
+                
+                // ========================================
+                // Layer1: ContentPanel
+                // ========================================
+                ContentPanelView(size: size, safeArea: safeArea)
+                
+                // ========================================
+                // Layer2: Chrome (Controls)
+                // ========================================
+                if model.controlsVisibility == .shown {
+                    PlayerControls()
+                        .padding(.bottom, safeArea.bottom)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .animation(.easeInOut(duration: 0.3), value: model.playerMode)
+            .animation(.easeInOut(duration: 0.25), value: model.controlsVisibility)
             .clipShape(RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous))
             .offset(y: offsetY)
             .gesture(
@@ -82,46 +106,50 @@ struct ExpandableNowPlayingDirect: View {
             }
         }
     }
+    
+    // Grip - Layer0 に属する共通コンポーネント
+    private var grip: some View {
+        Capsule()
+            .fill(.white.secondary)
+            .frame(width: 80, height: 5)
+    }
 }
 
-// Simplified version without matched geometry and compact/expand transitions
-private struct RegularNowPlayingSimple: View {
+// ========================================
+// Layer1: ContentPanel
+// Modeに応じて切り替わるコンテンツ領域
+// ========================================
+private struct ContentPanelView: View {
     @Environment(NowPlayingAdapter.self) var model
     var size: CGSize
     var safeArea: EdgeInsets
 
     var body: some View {
-        ZStack(alignment: .top) {
-            // ContentPanel - Mode に応じて切り替わるコンテンツ
-            switch model.playerMode {
-            case .nowPlaying:
-                nowPlayingContent
-            case .lyrics:
-                LyricsPanelView(size: size, safeArea: safeArea)
-            case .queue:
-                QueuePanelView(size: size, safeArea: safeArea)
-            }
-            
-            // Bottom-anchored elements (Controls) - Shown時のみ表示
-            if model.controlsVisibility == .shown {
-                PlayerControls()
-                    .padding(.bottom, safeArea.bottom)
-                    .frame(maxHeight: .infinity, alignment: .bottom)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+        switch model.playerMode {
+        case .nowPlaying:
+            NowPlayingContentView(size: size, safeArea: safeArea)
+        case .lyrics:
+            LyricsPanelView(size: size, safeArea: safeArea)
+        case .queue:
+            QueuePanelView(size: size, safeArea: safeArea)
         }
-        .animation(.easeInOut(duration: 0.3), value: model.playerMode)
-        .animation(.easeInOut(duration: 0.25), value: model.controlsVisibility)
     }
-    
-    // MARK: - NowPlaying Content (既存のArtwork + Grip)
-    
-    private var nowPlayingContent: some View {
-        VStack(spacing: 0) {
-            grip
-                .blendMode(.overlay)
-                .padding(.top, calculateGripTopPadding())
+}
 
+// ========================================
+// NowPlaying Content (Artwork + Title/Artist)
+// ========================================
+private struct NowPlayingContentView: View {
+    @Environment(NowPlayingAdapter.self) var model
+    var size: CGSize
+    var safeArea: EdgeInsets
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Grip用のスペーサー（GripはLayer0で描画されるため、ここではスペースのみ確保）
+            Spacer()
+                .frame(height: 8 + 5 + 8) // gripTopPadding + gripHeight + spacing
+            
             artwork
                 .frame(height: size.width - 50)
                 .padding(.vertical, size.height < 700 ? 10 : 30)
@@ -130,30 +158,8 @@ private struct RegularNowPlayingSimple: View {
         .padding(.top, safeArea.top)
         .frame(maxHeight: .infinity, alignment: .top)
     }
-    
-    var grip: some View {
-        Capsule()
-            .fill(.white.secondary)
-            // Doubled width from 40 to 80
-            .frame(width: 80, height: 5)
-    }
-    
-    func calculateGripTopPadding() -> CGFloat {
-        // Dynamic Island bottom is at safeArea.top
-        // Artwork top (without current padding) would be at some position
-        // Current VStack has spacing: 12
-        // We want grip centered between Dynamic Island bottom and artwork top
-        // Approximate calculation: place grip in the middle of available space
-        // Since we're in VStack with safeArea.top padding and spacing: 12
-        // The grip should be positioned to create equal spacing
-        // Default positioning with no extra padding creates ~12pt below DI
-        // and ~12pt above artwork due to VStack spacing
-        // To make them equal, we need to adjust based on visible gap
-        // Simplified: add slight offset to better center visually
-        return 8 // Additional padding to fine-tune position
-    }
 
-    var artwork: some View {
+    private var artwork: some View {
         GeometryReader {
             let size = $0.size
             // Show smaller when paused, full size when playing

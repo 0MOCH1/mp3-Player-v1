@@ -3,6 +3,7 @@
 //  mp3 Player
 //
 //  FullPlayer内のQueueモードで表示されるキューパネル
+//  Layer1: ContentPanel に属する
 //
 
 import SwiftUI
@@ -14,13 +15,14 @@ struct QueuePanelView: View {
     
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
+    // Grip用のスペース（GripはLayer0で描画されるため、ここではスペースのみ確保）
+    private let gripSpaceHeight: CGFloat = 8 + 5 + 8 // topPadding + gripHeight + spacing
     
     var body: some View {
         VStack(spacing: 0) {
-            // Grip
-            grip
-                .blendMode(.overlay)
-                .padding(.top, 8)
+            // Grip用のスペーサー（GripはLayer0で描画される）
+            Spacer()
+                .frame(height: gripSpaceHeight)
                 .padding(.top, safeArea.top)
             
             // QueuePanel本体
@@ -28,12 +30,6 @@ struct QueuePanelView: View {
                 .mask(edgeFadeMask)
         }
         .frame(maxHeight: .infinity, alignment: .top)
-    }
-    
-    private var grip: some View {
-        Capsule()
-            .fill(.white.secondary)
-            .frame(width: 80, height: 5)
     }
     
     private var queueContent: some View {
