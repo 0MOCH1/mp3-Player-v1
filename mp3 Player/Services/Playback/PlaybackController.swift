@@ -592,17 +592,39 @@ final class PlaybackController: ObservableObject {
         }
         
         // アートワークを設定（AirPlayポップアップに表示されるため）
+        // ローカルファイルのみ同期で読み込み、リモートリソースは非同期で読み込み
         if let artworkUri = item.artworkUri,
-           let artworkURL = URL(string: artworkUri),
-           let imageData = try? Data(contentsOf: artworkURL),
-           let image = UIImage(data: imageData) {
-            let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-            info[MPMediaItemPropertyArtwork] = artwork
+           let artworkURL = URL(string: artworkUri) {
+            if artworkURL.isFileURL {
+                // ローカルファイルは同期で読み込み
+                if let imageData = try? Data(contentsOf: artworkURL),
+                   let image = UIImage(data: imageData) {
+                    let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                    info[MPMediaItemPropertyArtwork] = artwork
+                }
+            } else {
+                // リモートリソースは非同期で読み込み
+                loadArtworkAsync(from: artworkURL)
+            }
         }
 
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = (state == .playing) ? 1.0 : 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+    
+    private func loadArtworkAsync(from url: URL) {
+        Task.detached(priority: .userInitiated) {
+            guard let imageData = try? Data(contentsOf: url),
+                  let image = UIImage(data: imageData) else { return }
+            
+            await MainActor.run {
+                var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+                let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                info[MPMediaItemPropertyArtwork] = artwork
+                MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+            }
+        }
     }
 
     private func updateNowPlayingTime() {
