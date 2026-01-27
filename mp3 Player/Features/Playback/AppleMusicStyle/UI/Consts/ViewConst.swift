@@ -28,6 +28,9 @@ extension ViewConst {
     // ContentPanel spacing
     static let contentTopPadding: CGFloat = 8
     
+    // History Gate threshold for Queue panel snap behavior
+    static let historyGateThreshold: CGFloat = 80
+    
     static var safeAreaInsets: EdgeInsets {
         if let windowScene = UIApplication.shared.connectedScenes
             .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,

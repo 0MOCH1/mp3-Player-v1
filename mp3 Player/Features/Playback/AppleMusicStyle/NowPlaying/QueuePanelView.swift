@@ -15,7 +15,6 @@ struct QueuePanelView: View {
     
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
-    private let historyGateThreshold: CGFloat = 80 // History Gate の閾値
     
     // スクロール位置追跡用
     @State private var lastNowPlayingY: CGFloat = 0
@@ -83,17 +82,9 @@ struct QueuePanelView: View {
     // MARK: - History Gate Logic
     
     private func handleHistoryGate(nowPlayingMinY: CGFloat, scrollProxy: ScrollViewProxy) {
-        // History Gate: NowPlaying が閾値を超えて下にある場合
-        // ドラッグ終了時（スクロール停止時）にスナップ判定
-        
-        // 閾値判定: NowPlayingが見え始めているが、まだ上端に達していない状態
-        let isInTransitionZone = nowPlayingMinY > 0 && nowPlayingMinY < historyGateThreshold
-        
-        // 閾値を超えた場合のみスナップ（意図的な操作と判断）
+        // History Gate: NowPlaying の位置を追跡
         // Note: SwiftUI の ScrollView では onScrollEnd がないため、
-        // ユーザーが手を離したタイミングでのスナップは難しい
-        // 代わりに、初期スクロール位置で対応
-        
+        // 完全なスナップ動作は制限される。初期スクロール位置で対応。
         lastNowPlayingY = nowPlayingMinY
     }
     
