@@ -235,7 +235,6 @@ private struct QueueRowView: View {
     let onReorder: (Int, Int) -> Void
     
     private let artworkSize: CGFloat = 48
-    @GestureState private var isDragging = false
     
     var body: some View {
         HStack(spacing: 12) {

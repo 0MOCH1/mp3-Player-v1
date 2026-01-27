@@ -15,12 +15,9 @@ struct ExpandableNowPlayingDirect: View {
     @State private var currentCornerRadius: CGFloat = 0.0
     @Environment(\.colorScheme) var colorScheme
     
-    // Controls の高さ（シークバー上端まで） + TrackInfo + 余白
-    private var controlsHeight: CGFloat {
-        // シークバー以下: SeekBar + Buttons spacing + Buttons + Volume spacing + Volume + Footer spacing + Footer + Bottom
-        // 概算: 30 + 30 + 60 + 30 + 40 + 10 + 40 + bottom = 約240 + safeArea.bottom
-        return 250
-    }
+    // Controls の高さ（シークバー上端まで）
+    // 計算: SeekBar(40) + Buttons spacing(30) + Buttons(60) + Volume spacing(30) + Volume(40) + Footer spacing(10) + Footer(40) = 250
+    private let controlsHeight: CGFloat = 250
 
     var body: some View {
         GeometryReader {
