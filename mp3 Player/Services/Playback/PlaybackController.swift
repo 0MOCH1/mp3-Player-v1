@@ -590,6 +590,15 @@ final class PlaybackController: ObservableObject {
         } else if duration > 0 {
             info[MPMediaItemPropertyPlaybackDuration] = duration
         }
+        
+        // アートワークを設定（AirPlayポップアップに表示されるため）
+        if let artworkUri = item.artworkUri,
+           let artworkURL = URL(string: artworkUri),
+           let imageData = try? Data(contentsOf: artworkURL),
+           let image = UIImage(data: imageData) {
+            let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            info[MPMediaItemPropertyArtwork] = artwork
+        }
 
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = (state == .playing) ? 1.0 : 0.0
