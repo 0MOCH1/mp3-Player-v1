@@ -20,14 +20,6 @@ struct PlayerControls: View {
     private var queueToggled: Bool {
         model.playerMode == .queue
     }
-    
-    // 指定されたパディング（iPhone 16 Pro基準）
-    private let footerToVolumeSpacing: CGFloat = 25
-    private let volumeToPlayerButtonsSpacing: CGFloat = 70
-    private let playerButtonsToSeekBarSpacing: CGFloat = 70
-    private let seekBarToTrackInfoSpacing: CGFloat = 30
-    private let timingIndicatorSpacing: CGFloat = 0
-    private let playerButtonsSpacing: CGFloat = 50
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,25 +27,25 @@ struct PlayerControls: View {
             
             // シークバー
             let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
-            TimingIndicator(spacing: timingIndicatorSpacing)
+            TimingIndicator(spacing: 0)
                 .padding(.horizontal, indicatorPadding)
             
-            // 30pt spacing (seekBar to playerButtons, but labeled as toTrackInfo for clarity)
-            Spacer().frame(height: seekBarToTrackInfoSpacing)
+            // 30pt spacing (seekBar to playerButtons)
+            Spacer().frame(height: ViewConst.playerButtonsToSeekBarSpacing)
             
             // Player buttons
-            PlayerButtons(spacing: playerButtonsSpacing)
+            PlayerButtons(spacing: 50)
                 .padding(.horizontal, ViewConst.playerCardPaddings)
             
-            // 70pt spacing
-            Spacer().frame(height: playerButtonsToSeekBarSpacing)
+            // 30pt spacing (playerButtons to volume)
+            Spacer().frame(height: ViewConst.volumeToPlayerButtonsSpacing)
             
             // Volume
             VolumeSlider()
                 .padding(.horizontal, 8)
             
-            // 25pt spacing
-            Spacer().frame(height: footerToVolumeSpacing)
+            // 10pt spacing (volume to footer)
+            Spacer().frame(height: ViewConst.footerToVolumeSpacing)
             
             // Footer (Lyrics, AirPlay, Queue buttons)
             footer

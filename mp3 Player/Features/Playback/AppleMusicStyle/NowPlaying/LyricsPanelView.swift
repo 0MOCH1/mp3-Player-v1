@@ -13,6 +13,7 @@ struct LyricsPanelView: View {
     let size: CGSize
     let safeArea: EdgeInsets
     var animation: Namespace.ID
+    let controlsHeight: CGFloat
     
     // スクロール位置によるControlsVisibility切り替え用
     @State private var scrollOffset: CGFloat = 0
@@ -21,9 +22,9 @@ struct LyricsPanelView: View {
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
     
-    // Controls の高さ（シークバー上端まで）
-    private var controlsHeight: CGFloat {
-        model.controlsVisibility == .shown ? 280 : 0
+    // 実際のControls高さ（Visibility考慮）
+    private var effectiveControlsHeight: CGFloat {
+        model.controlsVisibility == .shown ? controlsHeight : 0
     }
     
     var body: some View {
@@ -34,13 +35,15 @@ struct LyricsPanelView: View {
                 .padding(.top, safeArea.top)
             
             // CompactTrackInfo（固定ヘッダ）- matchedGeometryEffect適用
+            // 10pt上に配置
             CompactTrackInfoView(animation: animation)
                 .padding(.horizontal, 20)
-                .padding(.top, ViewConst.contentTopPadding)
+                .padding(.top, ViewConst.contentTopPadding + ViewConst.compactTrackInfoTopOffset)
             
-            // LyricsPanel本体（スクロール可能）
+            // LyricsPanel本体（スクロール可能、Controlsに重ならない）
             lyricsScrollView
                 .mask(edgeFadeMask)
+                .padding(.bottom, effectiveControlsHeight + safeArea.bottom)
         }
         .frame(maxHeight: .infinity, alignment: .top)
     }
@@ -74,7 +77,6 @@ struct LyricsPanelView: View {
                     .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
                     .padding(.vertical, 20)
-                    .padding(.bottom, controlsHeight + 60)
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "text.quote")
@@ -86,7 +88,6 @@ struct LyricsPanelView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 60)
-                .padding(.bottom, controlsHeight + 60)
             }
         }
     }

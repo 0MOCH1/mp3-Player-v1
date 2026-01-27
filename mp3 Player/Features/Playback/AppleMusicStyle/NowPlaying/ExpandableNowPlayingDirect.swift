@@ -14,6 +14,13 @@ struct ExpandableNowPlayingDirect: View {
     @State private var deviceCornerRadius: CGFloat = 39.0
     @State private var currentCornerRadius: CGFloat = 0.0
     @Environment(\.colorScheme) var colorScheme
+    
+    // Controls の高さ（シークバー上端まで） + TrackInfo + 余白
+    private var controlsHeight: CGFloat {
+        // シークバー以下: SeekBar + Buttons spacing + Buttons + Volume spacing + Volume + Footer spacing + Footer + Bottom
+        // 概算: 30 + 30 + 60 + 30 + 40 + 10 + 40 + bottom = 約240 + safeArea.bottom
+        return 250
+    }
 
     var body: some View {
         GeometryReader {
@@ -47,7 +54,7 @@ struct ExpandableNowPlayingDirect: View {
                 // ========================================
                 // Layer1: ContentPanel
                 // ========================================
-                ContentPanelView(size: size, safeArea: safeArea)
+                ContentPanelView(size: size, safeArea: safeArea, controlsHeight: controlsHeight)
                 
                 // ========================================
                 // Layer2: Chrome (Controls + TrackInfo)
@@ -60,12 +67,16 @@ struct ExpandableNowPlayingDirect: View {
                         if model.playerMode == .nowPlaying {
                             TrackInfoView()
                                 .padding(.horizontal, ViewConst.playerCardPaddings)
-                                .transition(.opacity.combined(with: .move(edge: .top)))
+                                .padding(.bottom, ViewConst.seekBarToTrackInfoSpacing)
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .move(edge: .bottom)),
+                                    removal: .opacity.combined(with: .move(edge: .top))
+                                ))
                         }
                         
                         // Controls
                         PlayerControls()
-                            .padding(.bottom, safeArea.bottom)
+                            .padding(.bottom, safeArea.bottom + ViewConst.bottomToFooterPadding)
                     }
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
@@ -166,26 +177,35 @@ struct TrackInfoView: View {
 // ========================================
 // Layer1: ContentPanel
 // Modeに応じて切り替わるコンテンツ領域
-// アニメーション: パーツがスムーズに動く形式
+// アニメーション: asymmetric scale + opacity transition
 // ========================================
 private struct ContentPanelView: View {
     @Environment(NowPlayingAdapter.self) var model
     @Namespace private var animation
     var size: CGSize
     var safeArea: EdgeInsets
+    var controlsHeight: CGFloat
+    
+    // asymmetric scale + opacity transition
+    private var modeTransition: AnyTransition {
+        .asymmetric(
+            insertion: .opacity.combined(with: .scale(scale: 1.0)),
+            removal: .opacity.combined(with: .scale(scale: 0.95))
+        )
+    }
 
     var body: some View {
         ZStack {
             switch model.playerMode {
             case .nowPlaying:
                 NowPlayingContentView(size: size, safeArea: safeArea, animation: animation)
-                    .transition(.identity) // フェードなし
+                    .transition(modeTransition)
             case .lyrics:
-                LyricsPanelView(size: size, safeArea: safeArea, animation: animation)
-                    .transition(.identity)
+                LyricsPanelView(size: size, safeArea: safeArea, animation: animation, controlsHeight: controlsHeight)
+                    .transition(modeTransition)
             case .queue:
-                QueuePanelView(size: size, safeArea: safeArea)
-                    .transition(.identity)
+                QueuePanelView(size: size, safeArea: safeArea, controlsHeight: controlsHeight)
+                    .transition(modeTransition)
             }
         }
     }

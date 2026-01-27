@@ -12,14 +12,17 @@ struct QueuePanelView: View {
     @Environment(NowPlayingAdapter.self) var model
     let size: CGSize
     let safeArea: EdgeInsets
+    let controlsHeight: CGFloat
     
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
     
-    // Controls の高さ（シークバー上端まで）
-    private var controlsHeight: CGFloat {
-        model.controlsVisibility == .shown ? 280 : 0
+    // 実際のControls高さ（Visibility考慮）
+    private var effectiveControlsHeight: CGFloat {
+        model.controlsVisibility == .shown ? controlsHeight : 0
     }
+    
+    @State private var scrolledID: String? = "nowPlaying"
     
     var body: some View {
         VStack(spacing: 0) {
@@ -28,49 +31,44 @@ struct QueuePanelView: View {
                 .frame(height: ViewConst.gripSpaceHeight)
                 .padding(.top, safeArea.top)
             
-            // QueuePanel本体（EdgeFade適用、ただしQueueControlsは回避）
-            ZStack(alignment: .top) {
-                // スクロールコンテンツ
-                queueContent
-                    .mask(edgeFadeMask)
-                
-                // QueueControls（EdgeFade回避のため別レイヤ）
-                VStack {
-                    // CompactTrackInfoの高さ分スペース
-                    Spacer().frame(height: compactTrackInfoHeight + 16)
-                    
-                    // QueueControls (Shuffle / Repeat) - Capsule スタイル
-                    queueControlsView
-                    
-                    Spacer()
-                }
-            }
+            // QueuePanel本体（EdgeFade適用）
+            queueContent
+                .mask(edgeFadeMask)
+                .padding(.bottom, effectiveControlsHeight + safeArea.bottom)
         }
         .frame(maxHeight: .infinity, alignment: .top)
+        .onAppear {
+            // 初期位置をCompactTrackInfoに設定
+            scrolledID = "nowPlaying"
+        }
     }
     
     private var queueContent: some View {
         ScrollViewReader { scrollProxy in
             ScrollView {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                     // History セクション
                     historySection
                     
-                    // CompactTrackInfo（現在再生中）
+                    // CompactTrackInfo（現在再生中）- 10pt上に配置
                     CompactTrackInfoView()
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
+                        .padding(.top, ViewConst.compactTrackInfoTopOffset)
                         .id("nowPlaying")
                     
-                    // QueueControls用のスペース（実際のボタンは別レイヤ）
-                    Spacer().frame(height: 60)
-                    
-                    // CurrentQueue セクション
-                    currentQueueSection
+                    // QueueControls セクション (sticky header として機能)
+                    Section {
+                        // CurrentQueue セクション
+                        currentQueueSection
+                    } header: {
+                        // QueueControls (Shuffle / Repeat) - Capsule スタイル
+                        queueControlsView
+                            .background(.ultraThinMaterial.opacity(0.8))
+                    }
                 }
-                .padding(.bottom, controlsHeight + 60)
             }
-            .scrollPosition(id: .constant("nowPlaying"), anchor: .top)
+            .scrollPosition(id: $scrolledID, anchor: .top)
         }
     }
     
@@ -143,7 +141,7 @@ struct QueuePanelView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.vertical, 8)
+        .padding(.vertical, 12)
     }
     
     private var repeatIcon: String {
@@ -182,35 +180,21 @@ struct QueuePanelView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
             } else {
-                // Reorderable list using draggable/dropDestination
+                // Reorderable list
                 ForEach(Array(model.queueItems.enumerated()), id: \.element.id) { index, item in
                     QueueRowView(
                         item: item,
                         index: index,
                         onDelete: {
                             model.removeFromQueue(at: index)
+                        },
+                        onReorder: { fromIndex, toIndex in
+                            model.startReordering()
+                            model.moveQueue(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex)
+                            model.endReordering()
                         }
                     )
                     .padding(.horizontal, 20)
-                    .draggable(item.id) {
-                        // Drag preview
-                        Text(item.title)
-                            .padding(8)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(8)
-                    }
-                    .dropDestination(for: String.self) { items, location in
-                        guard let draggedId = items.first,
-                              let fromIndex = model.queueItems.firstIndex(where: { $0.id == draggedId }) else {
-                            return false
-                        }
-                        if fromIndex != index {
-                            model.startReordering()
-                            model.moveQueue(fromOffsets: IndexSet(integer: fromIndex), toOffset: fromIndex < index ? index + 1 : index)
-                            model.endReordering()
-                        }
-                        return true
-                    }
                 }
             }
         }
@@ -248,8 +232,10 @@ private struct QueueRowView: View {
     let item: PlaybackItem
     let index: Int
     let onDelete: () -> Void
+    let onReorder: (Int, Int) -> Void
     
     private let artworkSize: CGFloat = 48
+    @GestureState private var isDragging = false
     
     var body: some View {
         HStack(spacing: 12) {
@@ -343,14 +329,5 @@ private struct HistoryRowView: View {
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
-    }
-}
-
-// MARK: - PreferenceKeys for Scroll Tracking
-
-private struct NowPlayingPositionPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }

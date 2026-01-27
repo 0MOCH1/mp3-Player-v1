@@ -17,7 +17,7 @@ extension ViewConst {
     static let compactNowPlayingHeight: CGFloat = 56
     
     // Grip (Layer0) constants
-    static let gripWidth: CGFloat = 80
+    static let gripWidth: CGFloat = 64  // 80ptから20%短縮
     static let gripHeight: CGFloat = 5
     static let gripTopPadding: CGFloat = 8
     /// Grip用のスペース（GripはLayer0で描画されるため、ContentPanelではスペースのみ確保）
@@ -28,8 +28,18 @@ extension ViewConst {
     // ContentPanel spacing
     static let contentTopPadding: CGFloat = 8
     
+    // CompactTrackInfo position offset (10pt up from default)
+    static let compactTrackInfoTopOffset: CGFloat = -10
+    
     // History Gate threshold for Queue panel snap behavior
     static let historyGateThreshold: CGFloat = 80
+    
+    // PlayerControls spacing (iPhone 16 Pro基準)
+    static let bottomToFooterPadding: CGFloat = 3  // safeArea.bottom に追加
+    static let footerToVolumeSpacing: CGFloat = 10  // 25pt - 15pt
+    static let volumeToPlayerButtonsSpacing: CGFloat = 30  // SeekBar→PlayerButtonsと同値
+    static let playerButtonsToSeekBarSpacing: CGFloat = 30
+    static let seekBarToTrackInfoSpacing: CGFloat = 30
     
     static var safeAreaInsets: EdgeInsets {
         if let windowScene = UIApplication.shared.connectedScenes
