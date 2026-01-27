@@ -13,16 +13,18 @@ struct QueuePanelView: View {
     let size: CGSize
     let safeArea: EdgeInsets
     let controlsHeight: CGFloat
+    var animation: Namespace.ID
     
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
     
-    // 実際のControls高さ（Visibility考慮）
+    // 実際のControls高さ（Visibility考慮）- v7仕様に基づき動的に変更
     private var effectiveControlsHeight: CGFloat {
-        model.controlsVisibility == .shown ? controlsHeight : 0
+        model.controlsVisibility == .shown ? controlsHeight + safeArea.bottom + ViewConst.bottomToFooterPadding : 0
     }
     
-    @State private var scrolledID: String? = "nowPlaying"
+    @State private var scrolledID: String? = nil
+    @State private var hasSetInitialPosition: Bool = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -31,44 +33,59 @@ struct QueuePanelView: View {
                 .frame(height: ViewConst.gripSpaceHeight)
                 .padding(.top, safeArea.top)
             
-            // QueuePanel本体（EdgeFade適用）
-            queueContent
-                .mask(edgeFadeMask)
-                .padding(.bottom, effectiveControlsHeight + safeArea.bottom)
+            // QueuePanel本体
+            ZStack(alignment: .top) {
+                // スクロールコンテンツ（EdgeFade適用）
+                queueScrollContent
+                    .mask(edgeFadeMask)
+                
+                // QueueControls - EdgeFadeの外側に配置（フェードに巻き込まれない）
+                VStack {
+                    Spacer()
+                        .frame(height: compactTrackInfoHeight + 20) // CompactTrackInfo後に配置
+                    queueControlsView
+                    Spacer()
+                }
+                .allowsHitTesting(true)
+            }
+            .padding(.bottom, effectiveControlsHeight)
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .onAppear {
-            // 初期位置をCompactTrackInfoに設定
-            scrolledID = "nowPlaying"
+            // 初期位置をCompactTrackInfoに即座に設定（アニメーションなし）
+            if !hasSetInitialPosition {
+                scrolledID = "nowPlaying"
+                hasSetInitialPosition = true
+            }
         }
     }
     
-    private var queueContent: some View {
+    private var queueScrollContent: some View {
         ScrollViewReader { scrollProxy in
             ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                LazyVStack(spacing: 0) {
                     // History セクション
                     historySection
                     
                     // CompactTrackInfo（現在再生中）- 10pt上に配置
-                    CompactTrackInfoView()
+                    CompactTrackInfoView(animation: animation)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
                         .padding(.top, ViewConst.compactTrackInfoTopOffset)
                         .id("nowPlaying")
                     
-                    // QueueControls セクション (sticky header として機能)
-                    Section {
-                        // CurrentQueue セクション
-                        currentQueueSection
-                    } header: {
-                        // QueueControls (Shuffle / Repeat) - Capsule スタイル
-                        queueControlsView
-                            .background(.ultraThinMaterial.opacity(0.8))
-                    }
+                    // QueueControlsの占有スペース（実際のQueueControlsはEdgeFade外に配置）
+                    Spacer()
+                        .frame(height: 60)
+                    
+                    // CurrentQueue セクション
+                    currentQueueSection
                 }
             }
             .scrollPosition(id: $scrolledID, anchor: .top)
+            .onChange(of: scrolledID) { oldValue, newValue in
+                // スクロール位置の変更を追跡
+            }
         }
     }
     
@@ -98,11 +115,12 @@ struct QueuePanelView: View {
         }
     }
     
-    // MARK: - QueueControls (Shuffle / Repeat) - Capsule Style
+    // MARK: - QueueControls (Shuffle / Repeat) - v7仕様
+    // EdgeFade外、背景なし、ボタンサイズ拡大
     
     private var queueControlsView: some View {
         HStack(spacing: 16) {
-            // Shuffle ボタン - Capsule
+            // Shuffle ボタン - Capsule、サイズ拡大（縦+5pt、横+20pt）
             Button {
                 model.toggleShuffle()
             } label: {
@@ -112,8 +130,8 @@ struct QueuePanelView: View {
                     Text("Shuffle")
                         .font(.subheadline.weight(.medium))
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.horizontal, ViewConst.queueControlsHorizontalPadding)
+                .padding(.vertical, ViewConst.queueControlsVerticalPadding)
                 .background(
                     Capsule()
                         .fill(model.isShuffleEnabled ? .white : .white.opacity(0.15))
@@ -121,7 +139,7 @@ struct QueuePanelView: View {
                 .foregroundStyle(model.isShuffleEnabled ? .black : .white)
             }
             
-            // Repeat ボタン - Capsule
+            // Repeat ボタン - Capsule、サイズ拡大
             Button {
                 model.cycleRepeat()
             } label: {
@@ -131,8 +149,8 @@ struct QueuePanelView: View {
                     Text(repeatLabel)
                         .font(.subheadline.weight(.medium))
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.horizontal, ViewConst.queueControlsHorizontalPadding)
+                .padding(.vertical, ViewConst.queueControlsVerticalPadding)
                 .background(
                     Capsule()
                         .fill(model.repeatMode != .off ? .white : .white.opacity(0.15))
@@ -142,6 +160,7 @@ struct QueuePanelView: View {
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.vertical, 12)
+        // 背景なし（v7仕様）
     }
     
     private var repeatIcon: String {
@@ -163,7 +182,7 @@ struct QueuePanelView: View {
     
     private var currentQueueSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Source ラベル（リストのラベルとして表示）
+            // Source ラベル（セクションラベルとして表示）
             if let currentItem = model.currentItem, let sourceLabel = currentItem.sourceLabel {
                 Text("Playing from \(sourceLabel)")
                     .font(.subheadline)
@@ -180,21 +199,29 @@ struct QueuePanelView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
             } else {
-                // Reorderable list
+                // Reorderable list using ForEach with onMove
                 ForEach(Array(model.queueItems.enumerated()), id: \.element.id) { index, item in
                     QueueRowView(
                         item: item,
                         index: index,
                         onDelete: {
                             model.removeFromQueue(at: index)
-                        },
-                        onReorder: { fromIndex, toIndex in
-                            model.startReordering()
-                            model.moveQueue(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex)
-                            model.endReordering()
                         }
                     )
                     .padding(.horizontal, 20)
+                    .onDrag {
+                        model.startReordering()
+                        return NSItemProvider(object: item.id as NSString)
+                    }
+                    .onDrop(of: [.text], delegate: QueueDropDelegate(
+                        item: item,
+                        items: model.queueItems,
+                        draggedItem: nil,
+                        moveAction: { from, to in
+                            model.moveQueue(fromOffsets: IndexSet(integer: from), toOffset: to)
+                            model.endReordering()
+                        }
+                    ))
                 }
             }
         }
@@ -226,24 +253,44 @@ struct QueuePanelView: View {
     }
 }
 
-// MARK: - QueueRowView (TrackRowView踏襲)
+// MARK: - QueueDropDelegate
+
+private struct QueueDropDelegate: DropDelegate {
+    let item: PlaybackItem
+    let items: [PlaybackItem]
+    let draggedItem: PlaybackItem?
+    let moveAction: (Int, Int) -> Void
+    
+    func performDrop(info: DropInfo) -> Bool {
+        return true
+    }
+    
+    func dropEntered(info: DropInfo) {
+        guard let fromIndex = items.firstIndex(where: { $0.id == draggedItem?.id }),
+              let toIndex = items.firstIndex(where: { $0.id == item.id }),
+              fromIndex != toIndex else { return }
+        
+        moveAction(fromIndex, toIndex > fromIndex ? toIndex + 1 : toIndex)
+    }
+}
+
+// MARK: - QueueRowView (TrackRowView踏襲、RoundedRectangle Artwork)
 
 private struct QueueRowView: View {
     let item: PlaybackItem
     let index: Int
     let onDelete: () -> Void
-    let onReorder: (Int, Int) -> Void
     
     private let artworkSize: CGFloat = 48
     
     var body: some View {
         HStack(spacing: 12) {
-            // Artwork (Rectangle = 角丸なし)
+            // Artwork (RoundedRectangle = 角丸あり、cornerRadius: 4)
             if let artworkUri = item.artworkUri {
-                ArtworkImageView(artworkUri: artworkUri, cornerRadius: 0, contentMode: .fill)
+                ArtworkImageView(artworkUri: artworkUri, cornerRadius: ViewConst.queueArtworkCornerRadius, contentMode: .fill)
                     .frame(width: artworkSize, height: artworkSize)
             } else {
-                Rectangle()
+                RoundedRectangle(cornerRadius: ViewConst.queueArtworkCornerRadius)
                     .fill(.white.opacity(0.1))
                     .frame(width: artworkSize, height: artworkSize)
                     .overlay {
@@ -252,7 +299,7 @@ private struct QueueRowView: View {
                     }
             }
             
-            // Title + Artist（Sourceは行ではなくセクションラベルで表示）
+            // Title + Artist
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.callout)
@@ -286,7 +333,7 @@ private struct QueueRowView: View {
     }
 }
 
-// MARK: - HistoryRowView
+// MARK: - HistoryRowView (RoundedRectangle Artwork)
 
 private struct HistoryRowView: View {
     let item: HistoryItem
@@ -295,12 +342,12 @@ private struct HistoryRowView: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // Artwork (Rectangle = 角丸なし)
+            // Artwork (RoundedRectangle = 角丸あり)
             if let artworkUri = item.artworkUri {
-                ArtworkImageView(artworkUri: artworkUri, cornerRadius: 0, contentMode: .fill)
+                ArtworkImageView(artworkUri: artworkUri, cornerRadius: ViewConst.queueArtworkCornerRadius, contentMode: .fill)
                     .frame(width: artworkSize, height: artworkSize)
             } else {
-                Rectangle()
+                RoundedRectangle(cornerRadius: ViewConst.queueArtworkCornerRadius)
                     .fill(.white.opacity(0.1))
                     .frame(width: artworkSize, height: artworkSize)
                     .overlay {

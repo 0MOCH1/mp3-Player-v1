@@ -22,9 +22,9 @@ struct LyricsPanelView: View {
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
     
-    // 実際のControls高さ（Visibility考慮）
+    // 実際のControls高さ（Visibility考慮）- v7仕様に基づき動的に変更
     private var effectiveControlsHeight: CGFloat {
-        model.controlsVisibility == .shown ? controlsHeight : 0
+        model.controlsVisibility == .shown ? controlsHeight + safeArea.bottom + ViewConst.bottomToFooterPadding : 0
     }
     
     var body: some View {
@@ -40,10 +40,12 @@ struct LyricsPanelView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, ViewConst.contentTopPadding + ViewConst.compactTrackInfoTopOffset)
             
-            // LyricsPanel本体（スクロール可能、Controlsに重ならない）
+            // LyricsPanel本体（スクロール可能）
+            // ControlsVisibility=Shown時: シークバー上端まで
+            // ControlsVisibility=Hidden時: 画面下端まで
             lyricsScrollView
                 .mask(edgeFadeMask)
-                .padding(.bottom, effectiveControlsHeight + safeArea.bottom)
+                .padding(.bottom, effectiveControlsHeight)
         }
         .frame(maxHeight: .infinity, alignment: .top)
     }

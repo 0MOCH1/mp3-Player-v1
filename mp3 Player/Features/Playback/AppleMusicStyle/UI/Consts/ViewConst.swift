@@ -41,6 +41,16 @@ extension ViewConst {
     static let playerButtonsToSeekBarSpacing: CGFloat = 30
     static let seekBarToTrackInfoSpacing: CGFloat = 30
     
+    // QueueControls button sizing
+    static let queueControlsVerticalPadding: CGFloat = 13  // 8 + 5
+    static let queueControlsHorizontalPadding: CGFloat = 36  // 16 + 20
+    
+    // Animation duration (fast, commercial quality)
+    static let animationDuration: Double = 0.2
+    
+    // Queue artwork corner radius
+    static let queueArtworkCornerRadius: CGFloat = 4
+    
     static var safeAreaInsets: EdgeInsets {
         if let windowScene = UIApplication.shared.connectedScenes
             .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,

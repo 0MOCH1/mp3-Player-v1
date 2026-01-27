@@ -11,6 +11,7 @@ import AVKit
 struct AirPlayButton: View {
     var body: some View {
         AirPlayButtonRepresentable()
+            .blendMode(.overlay)
     }
 }
 
@@ -18,8 +19,9 @@ private struct AirPlayButtonRepresentable: UIViewRepresentable {
     func makeUIView(context: Context) -> AVRoutePickerView {
         let routePickerView = AVRoutePickerView()
         routePickerView.backgroundColor = .clear
-        routePickerView.tintColor = .white.withAlphaComponent(0.8)
-        routePickerView.activeTintColor = .white
+        // 他のボタンと同じ色（palette.opaque相当）を使用
+        routePickerView.tintColor = UIColor.palette.playerCard.opaque
+        routePickerView.activeTintColor = UIColor.palette.playerCard.opaque
         routePickerView.prioritizesVideoDevices = false
         
         // ボタンのサイズを調整
@@ -34,6 +36,6 @@ private struct AirPlayButtonRepresentable: UIViewRepresentable {
     
     func updateUIView(_ uiView: AVRoutePickerView, context: Context) {
         // tintColor更新
-        uiView.tintColor = .white.withAlphaComponent(0.8)
+        uiView.tintColor = UIColor.palette.playerCard.opaque
     }
 }
