@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct QueuePanelView: View {
     @Environment(NowPlayingAdapter.self) var model
