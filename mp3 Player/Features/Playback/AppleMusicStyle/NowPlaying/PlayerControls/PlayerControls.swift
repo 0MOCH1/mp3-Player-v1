@@ -21,6 +21,7 @@ struct PlayerControls: View {
             let size = $0.size
             let spacing = size.verticalSpacing
             VStack(spacing: 0) {
+                Spacer(minLength: 0)
                 VStack(spacing: spacing) {
                     trackInfo
                     let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
@@ -29,15 +30,12 @@ struct PlayerControls: View {
                         .padding(.top, spacing - 10)
                         .padding(.horizontal, indicatorPadding)
                 }
-                .frame(height: size.height / 2.5, alignment: .top)
                 // Player buttons with increased spacing (+5pt from seek bar)
                 PlayerButtons(spacing: size.width * 0.14 + 10)
                     .padding(.horizontal, ViewConst.playerCardPaddings)
-                    .padding(.top, 5)
+                    .padding(.top, spacing + 5)
                 volume(playerSize: size)
-                    .frame(height: size.height / 2.5, alignment: .bottom)
             }
-            .frame(maxHeight: .infinity, alignment: .bottom)
         }
     }
 }
