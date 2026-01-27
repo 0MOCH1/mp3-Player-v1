@@ -2,10 +2,10 @@
 1. 目的と前提  
 2. デザイン踏襲要件  
 3. 用語集（英語統一）  
-4. UI Layer Model  
+4. UI Layer Model（FullPlayer 内）  
 5. State Model  
 6. FullPlayer（標準再生UI）  
-7. MiniPlayer（縮小UI）共通  
+7. MiniPlayer（縮小UI）  
 8. Lyrics Mode（歌詞）  
 9. Queue Mode（キュー）  
 10. Visual Requirement: EdgeFade（端のグラデーション消失）  
@@ -33,19 +33,21 @@
 ## 3. 用語集（英語統一）
 3.1 **FullPlayer**  
 - 標準再生UI（現状の「再生画面」そのもの）
+- フルスクリーンモーダルとして表示
 
 3.2 **MiniPlayer**  
-- FullPlayer を下方向ドラッグで縮小した状態（いわゆるミニプレイヤー相当）
+- TabBar 上に `.tabViewBottomAccessory` として常駐する縮小プレイヤー
+- FullPlayer を下方向ドラッグで dismiss すると MiniPlayer に戻る
 
 3.3 **Controls**  
 - 音量バー、再生/停止、スキップ、戻る、シークバー（経過/残り）、LyricsButton、QueueButton、AirPlayButton 等を含む「操作UI一式」
 
 3.4 **CompactTrackInfo**  
-- MiniPlayer 上部に表示される「縮小楽曲情報」コンポーネント（Artwork + Title の横並び）  
-- 高さは既存踏襲、**Artwork は 80pt**固定
+- FullPlayer 内の Lyrics/Queue モードで表示される「縮小楽曲情報」コンポーネント（Artwork + Title の横並び）  
+- **Artwork は 80pt**固定（正方形）
 
 3.5 **ContentPanel**  
-- MiniPlayer 内で切り替わる主要コンテンツ領域（LyricsPanel / QueuePanel などが入る）
+- FullPlayer 内で Mode に応じて切り替わる主要コンテンツ領域（LyricsPanel / QueuePanel などが入る）
 
 3.6 **LyricsPanel / QueuePanel**  
 - ContentPanel に表示される具体コンテンツ（歌詞／キュー）
@@ -65,19 +67,18 @@
 
 ---
 
-## 4. UI Layer Model
-4.1 UIは概念的に以下の3レイヤで構成する（実装手段は任意だが、この分離を満たすこと）。
+## 4. UI Layer Model（FullPlayer 内）
+4.1 FullPlayer の UI は概念的に以下の3レイヤで構成する（実装手段は任意だが、この分離を満たすこと）。
 
 4.2 **Layer0: Background & Grip**  
 - Artwork 由来の背景グラデーション  
-- FullPlayer ↔ MiniPlayer のドラッグ操作を担う Grip（ヒット領域）
+- FullPlayer dismiss のためのドラッグ操作を担う Grip（ヒット領域）
 
 4.3 **Layer1: ContentPanel**  
-- 状態に応じて切り替わるコンテンツ（LyricsPanel / QueuePanel）
+- Mode に応じて切り替わるコンテンツ（NowPlaying: Artwork+Title, Lyrics: LyricsPanel, Queue: QueuePanel）
 
 4.4 **Layer2: Chrome**  
 - Controls（全状態で見た目一貫）  
-- 必要に応じて MiniPlayer への復帰タップ等の“常時UI”
 
 4.5 **CompactTrackInfo のレイヤ所属ルール**  
 - CompactTrackInfo は **表示位置（固定 or リスト内）をモードに応じて変更してよい**。  
@@ -130,14 +131,24 @@
 
 ---
 
-## 7. MiniPlayer（縮小UI）共通
-7.1 **Exit**  
-- MiniPlayer の Artwork タップで FullPlayer に復帰
+## 7. MiniPlayer（縮小UI）
+7.1 **配置**  
+- `.tabViewBottomAccessory` として TabBar 上に常駐
+- 既存の MiniPlayer 実装を踏襲（見た目・機能はそのまま）
 
-7.2 **Common UI**  
-- CompactTrackInfo（Artwork 80pt）  
-- Controls（見た目一貫）  
-- ContentPanel（Modeにより内容切替）
+7.2 **UI（既存踏襲）**  
+- Artwork（32x32、角丸6pt）  
+- タイトル + アーティスト名  
+- 再生/一時停止ボタン  
+- 次へボタン（full placement 時のみ）  
+- inline / full の2つの placement に対応
+
+7.3 **Entry to FullPlayer**  
+- MiniPlayer 全体をタップで FullPlayer（フルスクリーンモーダル）へ遷移
+- できれば MiniPlayer ↔ FullPlayer 間で滑らかなアニメーション遷移
+
+7.4 **Exit from FullPlayer**  
+- FullPlayer を下ドラッグで dismiss すると MiniPlayer に戻る
 
 ---
 
@@ -150,11 +161,14 @@
 - 上方向スクロールで **ControlsVisibility=Shown** に復帰  
 - 誤作動防止の判定方法・閾値は裁量（ただし誤作動が目立たないこと）
 
-8.3 **CompactTrackInfo**  
+8.3 **Skip/Back 操作**
+- Lyrics モード時は Controls 内の再生ボタン群を使用（Artwork スワイプは不可）
+
+8.4 **CompactTrackInfo**  
 - 表示は必須  
 - 固定表示として扱ってよい（ただし見た目一貫）
 
-8.4 **No Lyrics**  
+8.5 **No Lyrics**  
 - 未取得はプレースホルダー
 
 ---
@@ -164,43 +178,52 @@
 - QueueButton で NowPlaying ↔ Queue をトグル（Lyricsとは排他）
 
 9.2 **Structure（順序固定）**  
-1) History  
+1) History（再生済みトラック。HistoryRepository から取得）  
 2) CompactTrackInfo（リスト内要素として配置してよい）  
 3) QueueControls（Shuffle / Repeat）  
 4) CurrentQueue（現在再生中は含めない）
 
-9.3 **Initial Position（必須）**  
+9.3 **Skip/Back 操作**
+- Queue モード時は Controls 内の再生ボタン群を使用（Artwork スワイプは不可）
+
+9.4 **ControlsVisibility**
+- Queue モードでは Controls は常に Shown
+- Reordering 時のみ Hidden になる
+
+9.5 **Initial Position（必須）**  
 - Queueへ入るたび、初期位置は **CompactTrackInfo がリスト上端に揃う位置**から開始する（方法は裁量）
 
-9.4 **QueueControls Visibility（必須）**  
+9.6 **QueueControls Visibility（必須）**  
 - QueueControls は **常時可視（sticky相当）**
 
-9.5 **Scroll Ownership（必須）**  
+9.7 **Scroll Ownership（必須）**  
 - QueueControls が上端に到達するまでは外側スクロール  
 - 到達後：CurrentQueue が内側スクロールとして進行し、QueueControls は常時見える  
 - CurrentQueue が上端で上方向スクロール継続 → 外側へ戻り History へ戻れること
 
-9.6 **History Gate（必須）**  
+9.8 **History Gate（必須）**  
 - History 下端到達後の下方向操作は以下：  
   1) 下端より下（CompactTrackInfo以降）が **覗ける**  
   2) 閾値未満：History下端位置へ戻される  
   3) 閾値超：CompactTrackInfo が上端に揃う位置へスナップ  
 - 閾値・判定方法は裁量（意図せず遷移しない／意図すれば遷移できること）
 
-9.7 **QueueSubstate: Reordering（必須）**  
+9.9 **QueueSubstate: Reordering（必須）**  
 - CurrentQueue は常に並び替え可能（Reorder handle 等）  
 - 並び替え開始：QueueSubstate=Reordering + ControlsVisibility=Hidden  
 - 並び替え終了：QueueSubstate=Browsing + ControlsVisibility=Shown に必ず戻る（例外なし）
 
-9.8 **Row Actions / Labels**  
+9.10 **Row Actions / Labels**  
 - 左スワイプ削除：確認なし  
 - ラベルに追加元を明記（具体名まで）例：`Source: Album 1`
+- 行表示は TrackListView / TrackRowView を踏襲
+- Artwork は Rectangle（角丸なし）
 
-9.9 **Empty State**  
+9.11 **Empty State**  
 - CurrentQueue が空：`Queue is empty`  
 - History が空：空表示（セクション自体は表示してよい）
 
-9.10 **Queue Button Indicators**  
+9.12 **Queue Button Indicators**  
 - Shuffle / Repeat の状態を QueueButton に小さなアイコンで表示
 
 ---
