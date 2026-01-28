@@ -145,7 +145,7 @@ struct QueuePanelView: View {
                     .font(.headline)
                     .foregroundStyle(.white.opacity(0.8))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 30)
                     .padding(.vertical, 8)
 
             } else if let currentItem = model.currentItem,
@@ -183,7 +183,7 @@ struct QueuePanelView: View {
                             model.playFromHistory(item: item)
                             showingHistory = false
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 30)
                     }
                 }
             }

@@ -37,7 +37,7 @@ struct LyricsPanelView: View {
             // CompactTrackInfo（固定ヘッダ）- matchedGeometryEffect適用
             // 10pt上に配置
             CompactTrackInfoView(animation: animation)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 30)
                 .padding(.top, ViewConst.contentTopPadding + ViewConst.compactTrackInfoTopOffset)
             
             // LyricsPanel本体（スクロール可能）
@@ -68,7 +68,7 @@ struct LyricsPanelView: View {
                 handleScrollChange(offset)
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 30)
     }
     
     private var lyricsContent: some View {
