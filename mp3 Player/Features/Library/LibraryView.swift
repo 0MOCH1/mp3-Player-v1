@@ -13,7 +13,49 @@ struct LibraryView: View {
 
     var body: some View {
         NavigationStack {
-            List {                if let playbackController {
+            List {
+                // Pinned section (favorites) - no label, 2 rows × 3 columns
+                if !viewModel.favoriteAlbums.isEmpty || !viewModel.favoritePlaylists.isEmpty {
+                    Section {
+                        let columns = [
+                            GridItem(.flexible(), spacing: 16),
+                            GridItem(.flexible(), spacing: 16),
+                            GridItem(.flexible(), spacing: 16)
+                        ]
+                        LazyVGrid(columns: columns, spacing: 16) {
+                            ForEach(viewModel.favoriteAlbums.prefix(6)) { album in
+                                NavigationLink {
+                                    AlbumDetailView(albumId: album.id, albumName: album.name)
+                                } label: {
+                                    AlbumTileView(
+                                        title: album.name,
+                                        artist: album.artist,
+                                        artworkUri: album.artworkUri,
+                                        isFavorite: album.isFavorite
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            
+                            ForEach(viewModel.favoritePlaylists.prefix(6 - min(6, viewModel.favoriteAlbums.count))) { playlist in
+                                NavigationLink {
+                                    PlaylistDetailView(playlistId: playlist.id, playlistName: playlist.name)
+                                } label: {
+                                    PlaylistTileView(
+                                        title: playlist.name,
+                                        artworkUris: playlist.artworkUris,
+                                        isFavorite: playlist.isFavorite
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    }
+                }
+                
+                if let playbackController {
                     Section("Now Playing") {
                         Button {
                             showsNowPlaying = true
@@ -25,20 +67,25 @@ struct LibraryView: View {
                 }
 
                 Section("Browse") {
-                    NavigationLink("Tracks") {
-                        TrackListView()
-                    }
-                    NavigationLink("Albums") {
-                        AlbumListView()
-                    }
-                    NavigationLink("Album Artists") {
-                        AlbumArtistListView()
-                    }
-                    NavigationLink("Artists") {
-                        ArtistListView()
-                    }
-                    NavigationLink("Playlists") {
+                    NavigationLink {
                         PlaylistListView()
+                    } label: {
+                        Label("Playlists", systemImage: "music.note.list")
+                    }
+                    NavigationLink {
+                        AlbumListView()
+                    } label: {
+                        Label("Albums", systemImage: "square.stack")
+                    }
+                    NavigationLink {
+                        ArtistListView()
+                    } label: {
+                        Label("Artists", systemImage: "music.mic")
+                    }
+                    NavigationLink {
+                        TrackListView()
+                    } label: {
+                        Label("Tracks", systemImage: "music.note")
                     }
                 }
 
