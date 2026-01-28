@@ -16,7 +16,14 @@ struct TrackDeletionHelper {
         onSuccess: @escaping @MainActor () -> Void,
         onError: @escaping @MainActor (String) -> Void
     ) {
-        guard let appDatabase else { return }
+        guard let appDatabase else {
+            Task {
+                await MainActor.run {
+                    onError("Database not available")
+                }
+            }
+            return
+        }
         let deletionService = TrackDeletionService(appDatabase: appDatabase)
         Task {
             do {
