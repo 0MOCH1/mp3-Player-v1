@@ -27,7 +27,7 @@ now_playing_spec_v8
 2.1 **基本的なUIデザイン、見た目、配置、サイズ感は既存プロジェクトを踏襲**すること。実現方法は問わない。  
 2.2 **Controls の見た目は全状態で一貫**させること（表示時は常に同一のスタイル）。  
 2.3 **CompactTrackInfo の見た目も全状態で一貫**させること（固定表示でもリスト内でも同一スタイルに見える）。  
-2.4 **CompactTrackInfo の Artwork サイズは 70pt**（RoundedRectangle）とする。  
+2.4 **CompactTrackInfo の Artwork サイズは 72pt**（RoundedRectangle）とする。  
 2.5 **FullPlayer（標準再生UI）は現状実装されている画面と同一の見た目・体験**であること。内部構造が大幅に変わるため **作り直し実装でよい**（結果が一致すればOK）。
 
 ---
@@ -46,7 +46,7 @@ now_playing_spec_v8
 
 3.4 **CompactTrackInfo**  
 - FullPlayer 内の Lyrics/Queue モードで表示される「縮小楽曲情報」コンポーネント（(Artwork + Title).leading (AddFavoriteButton(Toggle) + MenuButton).trailing の横並び）  
-- **Artwork は 75pt**固定（RoundedRectangle）
+- **Artwork は 72pt**固定（RoundedRectangle）
 
 3.5 **ContentPanel**  
 - FullPlayer 内で Mode に応じて切り替わる主要コンテンツ領域（LyricsPanel / QueuePanel などが入る）

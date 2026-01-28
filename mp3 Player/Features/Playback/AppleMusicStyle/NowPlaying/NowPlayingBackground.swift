@@ -27,6 +27,7 @@ struct NowPlayingBackground: View {
         }
         .clipShape(.rect(cornerRadius: expanded ? 0 : 14))
         .frame(height: expanded ? nil : ViewConst.compactNowPlayingHeight)
+        .ignoresSafeArea(.all)
         .shadow(
             color: .primary.opacity(colorScheme == .light ? 0.2 : 0),
             radius: 8,

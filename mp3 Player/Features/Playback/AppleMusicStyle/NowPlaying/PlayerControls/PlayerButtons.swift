@@ -12,17 +12,18 @@ struct PlayerButtons: View {
     let spacing: CGFloat
     // Increased from 34 to 40 for larger icons
     let imageSize: CGFloat = 40
+    let recentering: CGFloat = 2
     @State var backwardAnimationTrigger: PlayerButtonTrigger = .one(bouncing: false)
     @State var forwardAnimationTrigger: PlayerButtonTrigger = .one(bouncing: false)
 
     var body: some View {
         // Reduced spacing by 15pt as requested
-        HStack(spacing: max(spacing - 15, 0)) {
+        HStack(spacing: max(spacing, 0)) {
             PlayerButton(
                 label: {
                     PlayerButtonLabel(
                         type: model.backwardButton,
-                        size: imageSize,
+                        size: imageSize+2,
                         animationTrigger: backwardAnimationTrigger
                     )
                 },
@@ -35,7 +36,10 @@ struct PlayerButtons: View {
             PlayerButton(
                 label: {
                     // Reduced to imageSize (40pt) - same as skip buttons for minimal difference
-                    PlayerButtonLabel(type: model.playPauseButton, size: imageSize)
+                    PlayerButtonLabel(
+                        type: model.playPauseButton,
+                        size: imageSize-3
+                    )
                 },
                 onEnded: {
                     model.onPlayPause()
@@ -46,7 +50,7 @@ struct PlayerButtons: View {
                 label: {
                     PlayerButtonLabel(
                         type: model.forwardButton,
-                        size: imageSize,
+                        size: imageSize+2,
                         animationTrigger: forwardAnimationTrigger
                     )
                 },

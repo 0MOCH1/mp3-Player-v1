@@ -14,6 +14,10 @@ struct ExpandableNowPlayingDirect: View {
     @State private var deviceCornerRadius: CGFloat = 39.0
     @State private var currentCornerRadius: CGFloat = 0.0
     @Environment(\.colorScheme) var colorScheme
+    
+    // Controls の高さ（シークバー上端まで）
+    // 計算: SeekBar(40) + Buttons spacing(30) + Buttons(60) + Volume spacing(30) + Volume(40) + Footer spacing(10) + Footer(40) = 250
+    private let controlsHeight: CGFloat = 250
 
     var body: some View {
         GeometryReader {
@@ -47,31 +51,35 @@ struct ExpandableNowPlayingDirect: View {
                 // ========================================
                 // Layer1: ContentPanel
                 // ========================================
-                ContentPanelView(size: size, safeArea: safeArea)
+                ContentPanelView(size: size, safeArea: safeArea, controlsHeight: controlsHeight)
                 
                 // ========================================
                 // Layer2: Chrome (Controls + TrackInfo)
                 // ========================================
                 if model.controlsVisibility == .shown {
-                    VStack(spacing: 0) {
-                        Spacer()
+                    VStack(alignment: .center, spacing: 0) {
+                        Spacer(minLength: 0)
                         
                         // TrackInfo - NowPlayingモードかつCompactTrackInfo非表示時のみ表示
                         if model.playerMode == .nowPlaying {
                             TrackInfoView()
-                                .padding(.horizontal, ViewConst.playerCardPaddings)
-                                .transition(.opacity.combined(with: .move(edge: .top)))
+                                .padding(.bottom, ViewConst.seekBarToTrackInfoSpacing-10)
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .move(edge: .bottom)),
+                                    removal: .opacity.combined(with: .move(edge: .top))
+                                ))
                         }
                         
                         // Controls
                         PlayerControls()
-                            .padding(.bottom, safeArea.bottom)
+                            .padding(.bottom, safeArea.bottom + ViewConst.bottomToFooterPadding)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .animation(.easeInOut(duration: 0.3), value: model.playerMode)
-            .animation(.easeInOut(duration: 0.25), value: model.controlsVisibility)
+            .animation(.easeInOut(duration: ViewConst.animationDuration), value: model.playerMode)
+            .animation(.easeInOut(duration: ViewConst.animationDuration), value: model.controlsVisibility)
             .clipShape(RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous))
             .offset(y: offsetY)
             .gesture(
@@ -138,7 +146,7 @@ struct TrackInfoView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: -1) {
+        VStack(alignment: .leading, spacing: 2) {
             let fade = ViewConst.playerCardPaddings
             let cfg = MarqueeText.Config(leftFade: fade, rightFade: fade)
             // Title: title2, semibold
@@ -152,7 +160,7 @@ struct TrackInfoView: View {
             // Artist: title3
             MarqueeText(model.display.subtitle ?? "", config: cfg)
                 .transformEffect(.identity)
-                .font(.title3)
+                .font(.title2)
                 .foregroundStyle(Color(palette.opaque))
                 .blendMode(.overlay)
                 .id(model.display.subtitle)
@@ -166,26 +174,35 @@ struct TrackInfoView: View {
 // ========================================
 // Layer1: ContentPanel
 // Modeに応じて切り替わるコンテンツ領域
-// アニメーション: パーツがスムーズに動く形式
+// アニメーション: asymmetric scale + opacity transition (入/出両方に適用)
 // ========================================
 private struct ContentPanelView: View {
     @Environment(NowPlayingAdapter.self) var model
     @Namespace private var animation
     var size: CGSize
     var safeArea: EdgeInsets
+    var controlsHeight: CGFloat
+    
+    // asymmetric scale + opacity transition - 入/出両方に適用
+    private var modeTransition: AnyTransition {
+        .asymmetric(
+            insertion: .opacity.combined(with: .scale(scale: 0.95)).animation(.easeInOut(duration: ViewConst.animationDuration)),
+            removal: .opacity.combined(with: .scale(scale: 0.95)).animation(.easeInOut(duration: ViewConst.animationDuration))
+        )
+    }
 
     var body: some View {
         ZStack {
             switch model.playerMode {
             case .nowPlaying:
                 NowPlayingContentView(size: size, safeArea: safeArea, animation: animation)
-                    .transition(.identity) // フェードなし
+                    .transition(modeTransition)
             case .lyrics:
-                LyricsPanelView(size: size, safeArea: safeArea, animation: animation)
-                    .transition(.identity)
+                LyricsPanelView(size: size, safeArea: safeArea, animation: animation, controlsHeight: controlsHeight)
+                    .transition(modeTransition)
             case .queue:
-                QueuePanelView(size: size, safeArea: safeArea)
-                    .transition(.identity)
+                QueuePanelView(size: size, safeArea: safeArea, controlsHeight: controlsHeight, animation: animation)
+                    .transition(modeTransition)
             }
         }
     }

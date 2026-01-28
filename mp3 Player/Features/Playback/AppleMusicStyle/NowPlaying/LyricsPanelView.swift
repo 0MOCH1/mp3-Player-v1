@@ -13,6 +13,7 @@ struct LyricsPanelView: View {
     let size: CGSize
     let safeArea: EdgeInsets
     var animation: Namespace.ID
+    let controlsHeight: CGFloat
     
     // スクロール位置によるControlsVisibility切り替え用
     @State private var scrollOffset: CGFloat = 0
@@ -21,9 +22,9 @@ struct LyricsPanelView: View {
     private let compactTrackInfoHeight: CGFloat = 100
     private let edgeFadeHeight: CGFloat = 40
     
-    // Controls の高さ（シークバー上端まで）
-    private var controlsHeight: CGFloat {
-        model.controlsVisibility == .shown ? 280 : 0
+    // 実際のControls高さ（Visibility考慮）- v7仕様に基づき動的に変更
+    private var effectiveControlsHeight: CGFloat {
+        model.controlsVisibility == .shown ? controlsHeight + safeArea.bottom + ViewConst.bottomToFooterPadding : 0
     }
     
     var body: some View {
@@ -34,13 +35,17 @@ struct LyricsPanelView: View {
                 .padding(.top, safeArea.top)
             
             // CompactTrackInfo（固定ヘッダ）- matchedGeometryEffect適用
+            // 10pt上に配置
             CompactTrackInfoView(animation: animation)
                 .padding(.horizontal, 20)
-                .padding(.top, ViewConst.contentTopPadding)
+                .padding(.top, ViewConst.contentTopPadding + ViewConst.compactTrackInfoTopOffset)
             
             // LyricsPanel本体（スクロール可能）
+            // ControlsVisibility=Shown時: シークバー上端まで
+            // ControlsVisibility=Hidden時: 画面下端まで
             lyricsScrollView
                 .mask(edgeFadeMask)
+                .padding(.bottom, effectiveControlsHeight)
         }
         .frame(maxHeight: .infinity, alignment: .top)
     }
@@ -74,7 +79,6 @@ struct LyricsPanelView: View {
                     .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
                     .padding(.vertical, 20)
-                    .padding(.bottom, controlsHeight + 60)
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "text.quote")
@@ -86,7 +90,6 @@ struct LyricsPanelView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 60)
-                .padding(.bottom, controlsHeight + 60)
             }
         }
     }
@@ -139,11 +142,13 @@ struct CompactTrackInfoView: View {
     @Environment(NowPlayingAdapter.self) var model
     var animation: Namespace.ID? = nil
     
-    private let artworkSize: CGFloat = 80
+    // v8仕様: CompactTrackInfo の Artwork サイズは 72pt
+    private let artworkSize: CGFloat = 72
+    private let buttonSize: CGFloat = 32
     
     var body: some View {
-        HStack(spacing: 16) {
-            // Artwork (80pt, 正方形) - matchedGeometryEffect適用
+        HStack(spacing: 12) {
+            // Artwork (72pt, 正方形, RoundedRectangle) - matchedGeometryEffect適用
             if let animation = animation {
                 ArtworkImageView(
                     artworkUri: model.display.artworkUri,
@@ -162,9 +167,9 @@ struct CompactTrackInfoView: View {
             }
             
             // Title + Artist
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(model.display.title)
-                    .font(.headline)
+                    .font(.headline.weight(.semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                 
@@ -177,8 +182,35 @@ struct CompactTrackInfoView: View {
             }
             
             Spacer()
+            
+            // AddFavoriteButton (32pt circle, star/star.fill toggle)
+            Button {
+                model.toggleFavorite()
+            } label: {
+                Image(systemName: model.isFavorite ? "star.fill" : "star")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: buttonSize, height: buttonSize)
+                    .background(
+                        Circle()
+                            .fill(.white.opacity(0.15))
+                    )
+            }
+            
+            // MenuButton (32pt circle, ellipsis)
+            Button {
+                // TODO: Show menu
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: buttonSize, height: buttonSize)
+                    .background(
+                        Circle()
+                            .fill(.white.opacity(0.15))
+                    )
+            }
         }
-        .padding(.vertical, 8)
     }
 }
 

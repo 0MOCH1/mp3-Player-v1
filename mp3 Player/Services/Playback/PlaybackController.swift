@@ -195,6 +195,24 @@ final class PlaybackController: ObservableObject {
 
         Task { await setCurrentIndex(safeIndex, playImmediately: true, recordHistory: true) }
     }
+    
+    /// 履歴からトラックIDで再生を開始 (v8仕様対応)
+    func playFromHistoryById(_ trackId: Int64) {
+        guard let item = fetchPlaybackItemByTrackId(trackId) else { return }
+        
+        if queue.isEmpty {
+            setQueue(trackIds: [item.id], startAt: 0, playImmediately: true)
+            return
+        }
+        
+        let index = currentIndex ?? 0
+        let safeIndex = min(max(index, 0), queue.count - 1)
+        queue[safeIndex] = item
+        queueItems = queue
+        persistQueueReplace(at: safeIndex, with: item)
+        
+        Task { await setCurrentIndex(safeIndex, playImmediately: true, recordHistory: true) }
+    }
 
     func refreshQueueArtwork() {
         guard !queue.isEmpty || currentItem != nil else { return }
@@ -590,10 +608,41 @@ final class PlaybackController: ObservableObject {
         } else if duration > 0 {
             info[MPMediaItemPropertyPlaybackDuration] = duration
         }
+        
+        // アートワークを設定（AirPlayポップアップに表示されるため）
+        // ローカルファイルのみ同期で読み込み、リモートリソースは非同期で読み込み
+        if let artworkUri = item.artworkUri,
+           let artworkURL = URL(string: artworkUri) {
+            if artworkURL.isFileURL {
+                // ローカルファイルは同期で読み込み
+                if let imageData = try? Data(contentsOf: artworkURL),
+                   let image = UIImage(data: imageData) {
+                    let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                    info[MPMediaItemPropertyArtwork] = artwork
+                }
+            } else {
+                // リモートリソースは非同期で読み込み
+                loadArtworkAsync(from: artworkURL)
+            }
+        }
 
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = (state == .playing) ? 1.0 : 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+    
+    private func loadArtworkAsync(from url: URL) {
+        Task.detached(priority: .userInitiated) {
+            guard let imageData = try? Data(contentsOf: url),
+                  let image = UIImage(data: imageData) else { return }
+            
+            await MainActor.run {
+                var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+                let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                info[MPMediaItemPropertyArtwork] = artwork
+                MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+            }
+        }
     }
 
     private func updateNowPlayingTime() {
@@ -1039,6 +1088,12 @@ final class PlaybackController: ObservableObject {
             duration: row["duration"] as Double?,
             artistId: row["artist_id"] as Int64?
         )
+    }
+    
+    /// トラックIDからPlaybackItemを取得 (v8仕様対応)
+    private func fetchPlaybackItemByTrackId(_ trackId: Int64) -> PlaybackItem? {
+        let items = fetchPlaybackItems(trackIds: [trackId])
+        return items.first
     }
 
     private func restoreQueueIfNeeded() async {

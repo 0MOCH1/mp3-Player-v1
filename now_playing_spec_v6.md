@@ -241,13 +241,58 @@
 - Artwork は滑らかに連結  
 - Title は Full→Mini で上フェードアウト、Mini→Full で下フェードイン
 
+11.3 **Mode間トランジション（パーツ単位アニメーション）**
+「複数の画面を切り替える」ではなく「画面は一つで、状態によってパーツが動く」形式。
+
+- **NowPlaying → Lyrics/Queue**:
+  - Artwork: スケール縮小しながらCompactTrackInfoのArtwork位置へ移動（matchedGeometryEffect）
+  - trackInfo: 上方向へスライドしながらフェードアウト
+  - CompactTrackInfoのtrackInfo: 下からスライドしながらフェードイン
+
+- **Lyrics/Queue (ControlsVisibility=Shown) ⇔ Queue/Lyrics**:
+  - ContentPanel内のみトランジション（asymmetric scale + opacity transition）
+  - CompactTrackInfoは位置を維持
+
+- **Queue (スクロール済み) → Lyrics**:
+  - QueuePanelのCompactTrackInfoがLyricsPanelのCompactTrackInfo位置へスライド
+
+11.4 **Layer1切り替えトランジション**
+- asymmetric scale + opacity transition を使用
+- 入: scaleEffect(1.0) + opacity(1)
+- 出: scaleEffect(0.95) + opacity(0)
+
 ---
 
-## 12. Acceptance Criteria（受入条件）
-12.1 既存プロジェクトの見た目・配置・サイズ感を踏襲している（実装は再構築でも可）。  
-12.2 Controls は全状態で見た目が一貫し、Shown/Hidden の切替でも再表示時に変化しない。  
-12.3 CompactTrackInfo は全状態で見た目が一貫し、Artwork は 80pt。  
-12.4 FullPlayer は下ドラッグで MiniPlayer に縮小し、MiniPlayer の Artwork タップで FullPlayer に復帰できる。  
-12.5 Lyrics と Queue は排他でトグル可能。Lyrics は ControlsVisibility の切替が成立。  
-12.6 Queue は初期位置（CompactTrackInfo が上端）、History Gate、QueueControls 常時可視、内側スクロール、Reordering で ControlsHidden が成立。  
-12.7 LyricsPanel / QueuePanel は EdgeFade が効いており、Controls が表示されていても端が自然にフェードする。
+## 12. Layout & Spacing（レイアウト・余白）
+12.1 **iPhone 16 Pro基準の余白指定（下から順）**
+| 間隔 | 値 |
+|------|-----|
+| 画面下端 → Footer | safeArea.bottom + 3pt |
+| Footer → Volume | 10pt |
+| Volume → PlayerButtons | 30pt（PlayerButtons → SeekBarと同値） |
+| PlayerButtons → SeekBar | 30pt |
+| SeekBar → TrackInfo | 30pt |
+
+12.2 **Grip寸法**
+- 幅: 64pt（80ptから20%短縮）
+- 高さ: 5pt
+
+12.3 **CompactTrackInfo位置**
+- LyricsPanel / QueuePanel 共通: 現行位置から10pt上へ
+
+12.4 **コンテンツとControlsの重なり禁止**
+- ContentPanel（歌詞・キュー）はControlsに重ならないこと
+- Controls表示時、コンテンツ領域の下端はシークバー上端まで
+
+---
+
+## 13. Acceptance Criteria（受入条件）
+13.1 既存プロジェクトの見た目・配置・サイズ感を踏襲している（実装は再構築でも可）。  
+13.2 Controls は全状態で見た目が一貫し、Shown/Hidden の切替でも再表示時に変化しない。  
+13.3 CompactTrackInfo は全状態で見た目が一貫し、Artwork は 80pt。  
+13.4 FullPlayer は下ドラッグで MiniPlayer に縮小し、MiniPlayer の Artwork タップで FullPlayer に復帰できる。  
+13.5 Lyrics と Queue は排他でトグル可能。Lyrics は ControlsVisibility の切替が成立。  
+13.6 Queue は初期位置（CompactTrackInfo が上端）、History Gate、QueueControls 常時可視、内側スクロール、Reordering で ControlsHidden が成立。  
+13.7 LyricsPanel / QueuePanel は EdgeFade が効いており、Controls が表示されていても端が自然にフェードする。
+13.8 Mode間トランジションは「パーツ単位アニメーション」で実装されており、Artworkはスケール＆移動、trackInfoはスライド＆フェードで遷移する。
+13.9 コンテンツ（歌詞・キュー）はControlsに重ならず、Controls表示時のコンテンツ下端はシークバー上端まで。

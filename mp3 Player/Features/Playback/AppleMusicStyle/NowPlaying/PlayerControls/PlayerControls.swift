@@ -20,38 +20,27 @@ struct PlayerControls: View {
     private var queueToggled: Bool {
         model.playerMode == .queue
     }
-    
-    // 指定されたパディング（iPhone 16 Pro基準）
-    private let footerToVolumeSpacing: CGFloat = 25
-    private let volumeToPlayerButtonsSpacing: CGFloat = 70
-    private let playerButtonsToSeekBarSpacing: CGFloat = 70
-    private let seekBarToTrackInfoSpacing: CGFloat = 30
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            
             // シークバー
             let indicatorPadding = ViewConst.playerCardPaddings - ElasticSliderConfig.playbackProgress.growth
             TimingIndicator(spacing: 0)
                 .padding(.horizontal, indicatorPadding)
             
-            // 30pt spacing
-            Spacer().frame(height: seekBarToTrackInfoSpacing)
+            // 30pt spacing (seekBar to playerButtons)
+            Spacer().frame(height: ViewConst.playerButtonsToSeekBarSpacing-10)
             
             // Player buttons
-            PlayerButtons(spacing: 50)
+            PlayerButtons(spacing: 42)
                 .padding(.horizontal, ViewConst.playerCardPaddings)
             
-            // 70pt spacing
-            Spacer().frame(height: playerButtonsToSeekBarSpacing)
+            // 30pt spacing (playerButtons to volume)
+            Spacer().frame(height: ViewConst.volumeToPlayerButtonsSpacing+10)
             
             // Volume
             VolumeSlider()
                 .padding(.horizontal, 8)
-            
-            // 25pt spacing
-            Spacer().frame(height: footerToVolumeSpacing)
             
             // Footer (Lyrics, AirPlay, Queue buttons)
             footer
