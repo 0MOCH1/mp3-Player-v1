@@ -5,49 +5,36 @@ import os.log
 enum LogHelper {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.mp3player", category: "app")
     
+    /// Format message with optional context
+    private static func formatMessage(_ message: String, context: String?) -> String {
+        guard let context = context else { return message }
+        return "[\(context)] \(message)"
+    }
+    
     /// Log an error with context
     static func logError(_ message: String, error: Error? = nil, context: String? = nil) {
+        let formattedMessage = formatMessage(message, context: context)
         if let error = error {
-            if let context = context {
-                logger.error("[\(context)] \(message): \(error.localizedDescription)")
-            } else {
-                logger.error("\(message): \(error.localizedDescription)")
-            }
+            logger.error("\(formattedMessage): \(error.localizedDescription)")
         } else {
-            if let context = context {
-                logger.error("[\(context)] \(message)")
-            } else {
-                logger.error("\(message)")
-            }
+            logger.error("\(formattedMessage)")
         }
     }
     
     /// Log a warning
     static func logWarning(_ message: String, context: String? = nil) {
-        if let context = context {
-            logger.warning("[\(context)] \(message)")
-        } else {
-            logger.warning("\(message)")
-        }
+        logger.warning("\(formatMessage(message, context: context))")
     }
     
     /// Log info for debugging
     static func logInfo(_ message: String, context: String? = nil) {
-        if let context = context {
-            logger.info("[\(context)] \(message)")
-        } else {
-            logger.info("\(message)")
-        }
+        logger.info("\(formatMessage(message, context: context))")
     }
     
     /// Log debug information (only in debug builds)
     static func logDebug(_ message: String, context: String? = nil) {
         #if DEBUG
-        if let context = context {
-            logger.debug("[\(context)] \(message)")
-        } else {
-            logger.debug("\(message)")
-        }
+        logger.debug("\(formatMessage(message, context: context))")
         #endif
     }
 }
