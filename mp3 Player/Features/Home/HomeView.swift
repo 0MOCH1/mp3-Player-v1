@@ -11,111 +11,65 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             List {
-                // Recent Plays section with horizontal scrolling
-                Section {
-                    if viewModel.recentAlbums.isEmpty && viewModel.recentPlaylists.isEmpty {
-                        Text("No recent items")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
-                                ForEach(viewModel.recentAlbums) { album in
-                                    NavigationLink {
-                                        AlbumDetailView(albumId: album.id, albumName: album.name)
-                                    } label: {
-                                        AlbumTileView(
-                                            title: album.name,
-                                            artist: album.albumArtist,
-                                            artworkUri: album.artworkUri,
-                                            isFavorite: album.isFavorite
-                                        )
-                                        .frame(width: 160)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                
-                                ForEach(viewModel.recentPlaylists) { playlist in
-                                    NavigationLink {
-                                        PlaylistDetailView(playlistId: playlist.id, playlistName: playlist.name)
-                                    } label: {
-                                        PlaylistTileView(
-                                            title: playlist.name,
-                                            artworkUris: playlist.artworkUris,
-                                            isFavorite: playlist.isFavorite
-                                        )
-                                        .frame(width: 160)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.horizontal, 16)
-                        }
-                        .listRowInsets(EdgeInsets())
-                    }
-                } header: {
-                    HStack {
-                        Text("Recent")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .textCase(nil)
-                        Spacer()
-                        NavigationLink {
-                            RecentPlaysListView()
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                }
-
-                // Recent Tracks section
+                // Recent Plays section - hidden but data is fetched
+                // This section is prepared for future implementation with horizontal scroll and item snapping
+                // Data fetching logic is maintained in viewModel
+                
+                // Recent Tracks section with 4 rows × variable columns
                 Section {
                     if viewModel.recentTracks.isEmpty {
                         Text("No recent plays")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(viewModel.recentTracks.prefix(4)) { track in
-                            TrackRowView(
-                                title: track.title,
-                                subtitle: track.artist,
-                                artworkUri: track.artworkUri,
-                                trackNumber: nil,
-                                isFavorite: track.isFavorite,
-                                isNowPlaying: track.trackId == playbackController.currentItem?.id,
-                                showsArtwork: true,
-                                onPlay: {
-                                    playbackController.playFromHistory(
-                                        source: track.source,
-                                        sourceTrackId: track.sourceTrackId
-                                    )
-                                },
-                                onMore: {
-                                    actionTrack = track
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            LazyHStack(spacing: 0) {
+                                // Create columns, each column has 4 rows
+                                let tracks = Array(viewModel.recentTracks.prefix(20)) // Show up to 20 tracks (5 columns)
+                                let columns = stride(from: 0, to: tracks.count, by: 4).map { index in
+                                    Array(tracks[index..<min(index + 4, tracks.count)])
                                 }
-                            )
-                            .contextMenu {
-                                trackMenuItems(for: track)
-                            }
-                            .listRowInsets(.init())
-                            .listRowSeparator(.visible)
-                            .swipeActions(edge: .leading) {
-                                Button("Add to Queue") {
-                                    enqueueEnd(track)
-                                }
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    if let trackId = track.trackId {
-                                        pendingDelete = TrackDeleteTarget(id: trackId, title: track.title)
+                                
+                                ForEach(Array(columns.enumerated()), id: \.offset) { columnIndex, columnTracks in
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        ForEach(columnTracks) { track in
+                                            Button {
+                                                playbackController.playFromHistory(
+                                                    source: track.source,
+                                                    sourceTrackId: track.sourceTrackId
+                                                )
+                                            } label: {
+                                                TrackRowView(
+                                                    title: track.title,
+                                                    subtitle: track.artist,
+                                                    artworkUri: track.artworkUri,
+                                                    trackNumber: nil,
+                                                    isFavorite: track.isFavorite,
+                                                    isNowPlaying: track.trackId == playbackController.currentItem?.id,
+                                                    showsArtwork: true,
+                                                    onPlay: {
+                                                        playbackController.playFromHistory(
+                                                            source: track.source,
+                                                            sourceTrackId: track.sourceTrackId
+                                                        )
+                                                    },
+                                                    onMore: {
+                                                        actionTrack = track
+                                                    }
+                                                )
+                                            }
+                                            .buttonStyle(.plain)
+                                            .contextMenu {
+                                                trackMenuItems(for: track)
+                                            }
+                                        }
                                     }
-                                } label: {
-                                    Text("Delete")
+                                    .frame(width: 320) // Fixed width per column for snapping
                                 }
                             }
+                            .scrollTargetLayout() // Enable snapping
                         }
+                        .scrollTargetBehavior(.viewAligned) // Snap to columns
+                        .listRowInsets(EdgeInsets())
                     }
                 } header: {
                     HStack {
@@ -134,17 +88,6 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
-                }
-
-                Section("Top Artists (30d)") {
-                    if viewModel.topArtists.isEmpty {
-                        Text("No top artists yet")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(viewModel.topArtists) { artist in
-                            Text(artist.name)
-                        }
-                    }
                 }
             }
             .appList()

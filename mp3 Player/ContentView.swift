@@ -24,14 +24,6 @@ struct ContentView: View {
             Tab("Library", systemImage: "music.note.list") {
                 LibraryView()
             }
-            
-            Tab("Import", systemImage: "square.and.arrow.down") {
-                ImportView()
-            }
-            
-            Tab("Settings", systemImage: "gearshape") {
-                SettingsView()
-            }
 
             Tab(role: .search) {
                 SearchView()

@@ -54,19 +54,9 @@ struct LibraryView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     }
                 }
-                
-                if let playbackController {
-                    Section("Now Playing") {
-                        Button {
-                            showsNowPlaying = true
-                        } label: {
-                            PlaybackStatusView(controller: playbackController)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
 
-                Section("Browse") {
+                // Browse section - no label
+                Section {
                     NavigationLink {
                         PlaylistListView()
                     } label: {
@@ -90,7 +80,7 @@ struct LibraryView: View {
                 }
 
                 if !viewModel.missingTracks.isEmpty {
-                    Section("Missing Files") {
+                    Section {
                         ForEach(viewModel.missingTracks) { track in
                             VStack(alignment: .leading) {
                                 Text(track.title)
@@ -130,24 +120,18 @@ struct LibraryView: View {
                         }
                     }
                 }
-
-                Section("Library") {
-                    Text("Albums: \(viewModel.counts.albums)")
-                    Text("Artists: \(viewModel.counts.artists)")
-                    Text("Tracks: \(viewModel.counts.tracks)")
-                    Text("Playlists: \(viewModel.counts.playlists)")
-                }
+                
+                // Library statistics section - kept for future use but not displayed
+                // Section("Library") {
+                //     Text("Albums: \(viewModel.counts.albums)")
+                //     Text("Artists: \(viewModel.counts.artists)")
+                //     Text("Tracks: \(viewModel.counts.tracks)")
+                //     Text("Playlists: \(viewModel.counts.playlists)")
+                // }
             }
             .appList()
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    if let playbackController, !playbackController.queueItems.isEmpty {
-                        EditButton()
-                    }
-                }
-            }
             .fileImporter(
                 isPresented: $isImporterPresented,
                 allowedContentTypes: [.audio],
