@@ -10,16 +10,35 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                // Recent Plays section - hidden but data is fetched
-                // This section is prepared for future implementation with horizontal scroll and item snapping
-                // Data fetching logic is maintained in viewModel
-                
-                // Recent Tracks section with 4 rows × variable columns
-                Section {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ScrollPositionDetector()
+                    
+                    // Recent Tracks section header (VStack with Text, not Section.header)
+                    HStack {
+                        Text("Recent Tracks")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        Spacer()
+                        NavigationLink {
+                            RecentTracksListView()
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+                    
+                    // Recent Tracks content with 4 rows × variable columns
                     if viewModel.recentTracks.isEmpty {
                         Text("No recent plays")
                             .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
                     } else {
                         ScrollView(.horizontal, showsIndicators: false) {
                             LazyHStack(spacing: 0) {
@@ -69,28 +88,11 @@ struct HomeView: View {
                             .scrollTargetLayout() // Enable snapping
                         }
                         .scrollTargetBehavior(.viewAligned) // Snap to columns
-                        .listRowInsets(EdgeInsets())
+                        .frame(height: 320) // Approximate height for 4 rows
                     }
-                } header: {
-                    HStack {
-                        Text("Recent Tracks")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .textCase(nil)
-                        Spacer()
-                        NavigationLink {
-                            RecentTracksListView()
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
                 }
             }
-            .appList()
+            .coordinateSpace(name: "scrollCoordinate")
             .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.inline)
             .confirmationDialog(

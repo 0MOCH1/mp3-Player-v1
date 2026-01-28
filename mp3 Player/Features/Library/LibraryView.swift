@@ -13,10 +13,12 @@ struct LibraryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                // Pinned section (favorites) - no label, 2 rows × 3 columns
-                if !viewModel.favoriteAlbums.isEmpty || !viewModel.favoritePlaylists.isEmpty {
-                    Section {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ScrollPositionDetector()
+                    
+                    // Pinned section (favorites) - no label, 2 rows × 3 columns
+                    if !viewModel.favoriteAlbums.isEmpty || !viewModel.favoritePlaylists.isEmpty {
                         let columns = [
                             GridItem(.flexible(), spacing: 16),
                             GridItem(.flexible(), spacing: 16),
@@ -50,86 +52,158 @@ struct LibraryView: View {
                                 .buttonStyle(.plain)
                             }
                         }
-                        .padding(.vertical, 8)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
                     }
-                }
 
-                // Browse section - no label
-                Section {
-                    NavigationLink {
-                        PlaylistListView()
-                    } label: {
-                        Label("Playlists", systemImage: "music.note.list")
+                    // Browse section - no label
+                    VStack(spacing: 0) {
+                        NavigationLink {
+                            PlaylistListView()
+                        } label: {
+                            HStack {
+                                Label("Playlists", systemImage: "music.note.list")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Divider()
+                            .padding(.leading, 16)
+                        
+                        NavigationLink {
+                            AlbumListView()
+                        } label: {
+                            HStack {
+                                Label("Albums", systemImage: "square.stack")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Divider()
+                            .padding(.leading, 16)
+                        
+                        NavigationLink {
+                            ArtistListView()
+                        } label: {
+                            HStack {
+                                Label("Artists", systemImage: "music.mic")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Divider()
+                            .padding(.leading, 16)
+                        
+                        NavigationLink {
+                            TrackListView()
+                        } label: {
+                            HStack {
+                                Label("Tracks", systemImage: "music.note")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    NavigationLink {
-                        AlbumListView()
-                    } label: {
-                        Label("Albums", systemImage: "square.stack")
-                    }
-                    NavigationLink {
-                        ArtistListView()
-                    } label: {
-                        Label("Artists", systemImage: "music.mic")
-                    }
-                    NavigationLink {
-                        TrackListView()
-                    } label: {
-                        Label("Tracks", systemImage: "music.note")
-                    }
-                }
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 16)
 
-                if !viewModel.missingTracks.isEmpty {
-                    Section {
-                        ForEach(viewModel.missingTracks) { track in
-                            VStack(alignment: .leading) {
-                                Text(track.title)
-                                if let artist = track.artist {
-                                    Text(artist)
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
+                    // Missing Files section - no label
+                    if !viewModel.missingTracks.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(Array(viewModel.missingTracks.enumerated()), id: \.element.id) { index, track in
+                                VStack(alignment: .leading) {
+                                    Text(track.title)
+                                    if let artist = track.artist {
+                                        Text(artist)
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    if let reasonValue = track.missingReason,
+                                       let reason = MissingReason(rawValue: reasonValue) {
+                                        Text(reason.displayLabel)
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
-                                if let reasonValue = track.missingReason,
-                                   let reason = MissingReason(rawValue: reasonValue) {
-                                    Text(reason.displayLabel)
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .swipeActions {
+                                    Button {
+                                        activeImporter = .relink(track)
+                                        isImporterPresented = true
+                                    } label: {
+                                        Text("Relink")
+                                    }
+                                    .tint(.blue)
+
+                                    Button(role: .destructive) {
+                                        deleteMissingTrack(track)
+                                    } label: {
+                                        Text("Delete")
+                                    }
+                                }
+                                
+                                if index < viewModel.missingTracks.count - 1 {
+                                    Divider()
+                                        .padding(.leading, 16)
                                 }
                             }
-                            .swipeActions {
-                                Button {
-                                    activeImporter = .relink(track)
-                                    isImporterPresented = true
-                                } label: {
-                                    Text("Relink")
-                                }
-                                .tint(.blue)
 
-                                Button(role: .destructive) {
-                                    deleteMissingTrack(track)
-                                } label: {
-                                    Text("Delete")
-                                }
+                            if let missingStatus {
+                                Text(missingStatus)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
                             }
                         }
-
-                        if let missingStatus {
-                            Text(missingStatus)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                        .cornerRadius(10)
+                        .padding(.horizontal, 16)
                     }
+                    
+                    // Library statistics section - kept for future use but not displayed
+                    // VStack {
+                    //     Text("Albums: \(viewModel.counts.albums)")
+                    //     Text("Artists: \(viewModel.counts.artists)")
+                    //     Text("Tracks: \(viewModel.counts.tracks)")
+                    //     Text("Playlists: \(viewModel.counts.playlists)")
+                    // }
                 }
-                
-                // Library statistics section - kept for future use but not displayed
-                // Section("Library") {
-                //     Text("Albums: \(viewModel.counts.albums)")
-                //     Text("Artists: \(viewModel.counts.artists)")
-                //     Text("Tracks: \(viewModel.counts.tracks)")
-                //     Text("Playlists: \(viewModel.counts.playlists)")
-                // }
+                .padding(.bottom, 20)
             }
-            .appList()
+            .coordinateSpace(name: "scrollCoordinate")
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.inline)
             .fileImporter(
