@@ -111,28 +111,40 @@ final class AVAssetMetadataReader: AudioMetadataReader {
         return nil
     }
 
-    private func metadataStringForKeys(_ keys: [String], metadata: [AVMetadataItem]) async -> String? {
+    /// Generic metadata extraction for multiple keys
+    private func metadataForKeys<T>(
+        _ keys: [String],
+        metadata: [AVMetadataItem],
+        loader: (AVMetadataItem) async -> T?
+    ) async -> T? {
         for item in metadata {
+            // Check common key
             if let commonKey = item.commonKey?.rawValue, keys.contains(commonKey) {
-                if let string = await loadStringValue(from: item) {
-                    return string
+                if let value = await loader(item) {
+                    return value
                 }
                 continue
             }
+            // Check AVMetadataKey
             if let key = item.key as? AVMetadataKey, keys.contains(key.rawValue) {
-                if let string = await loadStringValue(from: item) {
-                    return string
+                if let value = await loader(item) {
+                    return value
                 }
                 continue
             }
+            // Check string key
             if let key = item.key as? String, keys.contains(key) {
-                if let string = await loadStringValue(from: item) {
-                    return string
+                if let value = await loader(item) {
+                    return value
                 }
                 continue
             }
         }
         return nil
+    }
+
+    private func metadataStringForKeys(_ keys: [String], metadata: [AVMetadataItem]) async -> String? {
+        await metadataForKeys(keys, metadata: metadata, loader: loadStringValue)
     }
 
     private func metadataInt(
@@ -150,27 +162,7 @@ final class AVAssetMetadataReader: AudioMetadataReader {
     }
 
     private func metadataIntForKeys(_ keys: [String], metadata: [AVMetadataItem]) async -> Int? {
-        for item in metadata {
-            if let commonKey = item.commonKey?.rawValue, keys.contains(commonKey) {
-                if let value = await loadIntValue(from: item) {
-                    return value
-                }
-                continue
-            }
-            if let key = item.key as? AVMetadataKey, keys.contains(key.rawValue) {
-                if let value = await loadIntValue(from: item) {
-                    return value
-                }
-                continue
-            }
-            if let key = item.key as? String, keys.contains(key) {
-                if let value = await loadIntValue(from: item) {
-                    return value
-                }
-                continue
-            }
-        }
-        return nil
+        await metadataForKeys(keys, metadata: metadata, loader: loadIntValue)
     }
 
     private func metadataData(
@@ -188,27 +180,7 @@ final class AVAssetMetadataReader: AudioMetadataReader {
     }
 
     private func metadataDataForKeys(_ keys: [String], metadata: [AVMetadataItem]) async -> Data? {
-        for item in metadata {
-            if let commonKey = item.commonKey?.rawValue, keys.contains(commonKey) {
-                if let data = await loadDataValue(from: item) {
-                    return data
-                }
-                continue
-            }
-            if let key = item.key as? AVMetadataKey, keys.contains(key.rawValue) {
-                if let data = await loadDataValue(from: item) {
-                    return data
-                }
-                continue
-            }
-            if let key = item.key as? String, keys.contains(key) {
-                if let data = await loadDataValue(from: item) {
-                    return data
-                }
-                continue
-            }
-        }
-        return nil
+        await metadataForKeys(keys, metadata: metadata, loader: loadDataValue)
     }
 
     private func loadStringValue(from item: AVMetadataItem) async -> String? {
@@ -217,6 +189,7 @@ final class AVAssetMetadataReader: AudioMetadataReader {
             guard let string = value, !string.isEmpty else { return nil }
             return string
         } catch {
+            LogHelper.logWarning("Failed to load string value from metadata item", context: "AudioMetadata")
             return nil
         }
     }
@@ -229,6 +202,7 @@ final class AVAssetMetadataReader: AudioMetadataReader {
             }
         } catch {
             // Ignore load errors; fall back to direct value access below.
+            LogHelper.logDebug("Failed to load dataValue, trying direct value access", context: "AudioMetadata")
         }
 
         do {
@@ -240,6 +214,7 @@ final class AVAssetMetadataReader: AudioMetadataReader {
                 return data as Data
             }
         } catch {
+            LogHelper.logWarning("Failed to load data value from metadata item", context: "AudioMetadata")
             return nil
         }
         return nil
@@ -254,6 +229,7 @@ final class AVAssetMetadataReader: AudioMetadataReader {
             let string: String? = try await item.load(.stringValue)
             return parseInt(string)
         } catch {
+            LogHelper.logWarning("Failed to load int value from metadata item", context: "AudioMetadata")
             return nil
         }
     }

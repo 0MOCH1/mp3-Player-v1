@@ -1,0 +1,128 @@
+/* 
+  Localizable.strings
+  mp3 Player
+  
+  Japanese localization
+*/
+
+// MARK: - Navigation
+"nav.home" = "ホーム";
+"nav.library" = "ライブラリ";
+"nav.search" = "検索";
+"nav.settings" = "設定";
+
+// MARK: - Home Screen
+"home.section.recent" = "最近の項目";
+"home.section.recentPlays" = "最近再生した項目";
+"home.section.topArtists" = "トップアーティスト (30日間)";
+"home.empty.noRecentItems" = "最近の項目はありません";
+"home.empty.noRecentPlays" = "最近再生した項目はありません";
+"home.empty.noTopArtists" = "トップアーティストはまだありません";
+
+// MARK: - Library Screen
+"library.section.import" = "インポート";
+"library.section.nowPlaying" = "再生中";
+"library.section.browse" = "ブラウズ";
+"library.section.missingFiles" = "見つからないファイル";
+"library.section.library" = "ライブラリ";
+"library.import.mode" = "インポートモード";
+"library.import.deleteOriginal" = "コピー後に元のファイルを削除";
+"library.import.files" = "ファイルをインポート";
+"library.import.folder" = "フォルダをインポート";
+"library.import.importing" = "インポート中...";
+"library.browse.tracks" = "曲";
+"library.browse.albums" = "アルバム";
+"library.browse.albumArtists" = "アルバムアーティスト";
+"library.browse.artists" = "アーティスト";
+"library.browse.playlists" = "プレイリスト";
+"library.stats.albums" = "アルバム: %d";
+"library.stats.artists" = "アーティスト: %d";
+"library.stats.tracks" = "曲: %d";
+"library.stats.playlists" = "プレイリスト: %d";
+
+// MARK: - Search Screen
+"search.section.source" = "ソース";
+"search.section.appleMusic" = "Apple Music";
+"search.section.results" = "結果";
+"search.scope" = "検索範囲";
+"search.scope.local" = "ローカル";
+"search.scope.external" = "外部";
+"search.placeholder" = "検索";
+"search.empty.typeToSearch" = "検索するには入力してください";
+"search.empty.typeToSearchAppleMusic" = "Apple Musicを検索するには入力してください。";
+"search.empty.authRequired" = "Apple Musicの認証が必要です。";
+"search.action.requestAccess" = "Apple Musicアクセスをリクエスト";
+"search.category.artists" = "アーティスト";
+"search.category.albums" = "アルバム";
+"search.category.tracks" = "曲";
+"search.category.playlists" = "プレイリスト";
+"search.category.lyrics" = "歌詞";
+"search.empty.noArtists" = "アーティストなし";
+"search.empty.noAlbums" = "アルバムなし";
+"search.empty.noTracks" = "曲なし";
+"search.empty.noPlaylists" = "プレイリストなし";
+"search.empty.noLyrics" = "歌詞の一致なし";
+"search.action.seeAllArtists" = "すべてのアーティストを見る";
+"search.action.seeAllAlbums" = "すべてのアルバムを見る";
+"search.action.seeAllTracks" = "すべての曲を見る";
+"search.action.seeAllPlaylists" = "すべてのプレイリストを見る";
+"search.action.seeAllLyrics" = "すべての歌詞を見る";
+
+// MARK: - Context Menu
+"menu.playNext" = "次に再生";
+"menu.addToQueue" = "キューに追加";
+"menu.addToPlaylist" = "プレイリストに追加";
+"menu.addToFavorites" = "お気に入りに追加";
+"menu.removeFromFavorites" = "お気に入りから削除";
+"menu.showAlbum" = "アルバムを表示";
+"menu.showArtist" = "アーティストを表示";
+"menu.delete" = "削除";
+"menu.deleteTrack" = "曲を削除";
+"menu.relink" = "再リンク";
+"menu.remove" = "削除";
+
+// MARK: - Import
+"import.mode.reference" = "参照";
+"import.mode.copy" = "コピー";
+"import.mode.copyThenDelete" = "コピーして削除";
+"import.status.imported" = "インポート済み %d";
+"import.status.relinked" = "再リンク済み %d";
+"import.status.skipped" = "スキップ済み %d";
+"import.status.failed" = "失敗 %d";
+"import.error.unavailable" = "データベースが利用できません。";
+"import.error.failed" = "インポートに失敗しました: %@";
+"import.error.noFiles" = "ファイルが選択されていません。";
+"import.error.noFolder" = "フォルダが選択されていません。";
+
+// MARK: - Playback
+"playback.notPlaying" = "再生していません";
+"playback.queueEmpty" = "キューは空です";
+"playback.clearQueue" = "キューをクリア";
+
+// MARK: - Common Actions
+"action.ok" = "OK";
+"action.cancel" = "キャンセル";
+"action.delete" = "削除";
+"action.add" = "追加";
+"action.done" = "完了";
+"action.edit" = "編集";
+"action.save" = "保存";
+
+// MARK: - Dialogs
+"dialog.deleteTrack.title" = "曲を削除しますか？";
+"dialog.deleteTrack.message" = "コピーされた曲はファイルを削除します。参照された曲はライブラリからのみ削除されます。";
+"dialog.deleteFailed.title" = "削除に失敗しました";
+"dialog.trackOptions.title" = "曲のオプション";
+
+// MARK: - Accessibility
+"accessibility.settings" = "設定";
+"accessibility.nowPlaying" = "再生中";
+"accessibility.favorite" = "お気に入り";
+
+// MARK: - Missing Files
+"missing.relink.success" = "%@を再リンクしました。";
+"missing.relink.failed" = "再リンクに失敗しました: %@";
+"missing.relink.noFile" = "ファイルが選択されていません。";
+"missing.relink.unsupported" = "サポートされていないファイルです。";
+"missing.delete.success" = "%@を削除しました。";
+"missing.delete.failed" = "削除に失敗しました: %@";

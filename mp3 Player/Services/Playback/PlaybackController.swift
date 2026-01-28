@@ -4,6 +4,12 @@ import Foundation
 import GRDB
 import MediaPlayer
 
+/// Position for enqueueing items in the queue
+private enum EnqueuePosition {
+    case next  // After current item
+    case end   // At the end of queue
+}
+
 @MainActor
 final class PlaybackController: ObservableObject {
     @Published private(set) var state: PlaybackState = .stopped
@@ -131,7 +137,8 @@ final class PlaybackController: ObservableObject {
         }
     }
 
-    func enqueueNext(trackIds: [Int64]) {
+    /// Common helper for enqueueing items at a specific position
+    private func enqueueItems(trackIds: [Int64], at position: EnqueuePosition) {
         Task {
             let items = await fetchPlaybackItemsAsync(trackIds: trackIds)
             guard !items.isEmpty else { return }
@@ -140,27 +147,27 @@ final class PlaybackController: ObservableObject {
                 return
             }
 
-            let insertIndex = min(currentIndex + 1, queue.count)
-            queue.insert(contentsOf: items, at: insertIndex)
+            let insertIndex: Int
+            switch position {
+            case .next:
+                insertIndex = min(currentIndex + 1, queue.count)
+                queue.insert(contentsOf: items, at: insertIndex)
+            case .end:
+                insertIndex = queue.count
+                queue.append(contentsOf: items)
+            }
+            
             queueItems = queue
             persistQueueInsert(items, at: insertIndex)
         }
     }
+    
+    func enqueueNext(trackIds: [Int64]) {
+        enqueueItems(trackIds: trackIds, at: .next)
+    }
 
     func enqueueEnd(trackIds: [Int64]) {
-        Task {
-            let items = await fetchPlaybackItemsAsync(trackIds: trackIds)
-            guard !items.isEmpty else { return }
-            guard !queue.isEmpty else {
-                setQueue(trackIds: trackIds, startAt: 0, playImmediately: true)
-                return
-            }
-
-            let insertIndex = queue.count
-            queue.append(contentsOf: items)
-            queueItems = queue
-            persistQueueInsert(items, at: insertIndex)
-        }
+        enqueueItems(trackIds: trackIds, at: .end)
     }
 
     func moveQueue(fromOffsets: IndexSet, toOffset: Int) {
@@ -615,10 +622,14 @@ final class PlaybackController: ObservableObject {
            let artworkURL = URL(string: artworkUri) {
             if artworkURL.isFileURL {
                 // ローカルファイルは同期で読み込み
-                if let imageData = try? Data(contentsOf: artworkURL),
-                   let image = UIImage(data: imageData) {
-                    let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-                    info[MPMediaItemPropertyArtwork] = artwork
+                do {
+                    let imageData = try Data(contentsOf: artworkURL)
+                    if let image = UIImage(data: imageData) {
+                        let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                        info[MPMediaItemPropertyArtwork] = artwork
+                    }
+                } catch {
+                    LogHelper.logWarning("Failed to load local artwork: \(artworkURL.lastPathComponent)", context: "NowPlaying")
                 }
             } else {
                 // リモートリソースは非同期で読み込み
@@ -633,14 +644,18 @@ final class PlaybackController: ObservableObject {
     
     private func loadArtworkAsync(from url: URL) {
         Task.detached(priority: .userInitiated) {
-            guard let imageData = try? Data(contentsOf: url),
-                  let image = UIImage(data: imageData) else { return }
-            
-            await MainActor.run {
-                var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-                let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-                info[MPMediaItemPropertyArtwork] = artwork
-                MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+            do {
+                let imageData = try Data(contentsOf: url)
+                guard let image = UIImage(data: imageData) else { return }
+                
+                await MainActor.run {
+                    var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+                    let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                    info[MPMediaItemPropertyArtwork] = artwork
+                    MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+                }
+            } catch {
+                LogHelper.logWarning("Failed to load remote artwork: \(url.absoluteString)", context: "NowPlaying")
             }
         }
     }

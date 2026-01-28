@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct SearchView: View {
-    @Binding var showsSettings: Bool
     @Environment(\.appDatabase) private var appDatabase
     @Environment(\.playbackController) private var playbackController
     @Environment(\.appleMusicService) private var appleMusicService
@@ -60,6 +59,7 @@ struct SearchView: View {
             }
             .appList()
             .navigationTitle("Search")
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always))
             .onChange(of: query) { _, newValue in
                 viewModel.updateQuery(newValue, scope: scope, appDatabase: appDatabase, appleMusicService: appleMusicService)
@@ -69,16 +69,6 @@ struct SearchView: View {
             }
             .onAppear {
                 viewModel.updateQuery(query, scope: scope, appDatabase: appDatabase, appleMusicService: appleMusicService)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showsSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Settings")
-                }
             }
             .sheet(isPresented: $showsPlaylistPicker) {
                 PlaylistPickerView(trackIds: pickerTrackIds, trackTitle: playlistPickerTitle)
@@ -374,5 +364,5 @@ struct SearchView: View {
 }
 
 #Preview {
-    SearchView(showsSettings: .constant(false))
+    SearchView()
 }

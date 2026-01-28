@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var showsSettings = false
     @Environment(\.appDatabase) private var appDatabase
     @Environment(\.playbackController) private var playbackController
     @State private var didStartScan = false
@@ -19,15 +18,15 @@ struct ContentView: View {
     var body: some View {
         TabView {
             Tab("Home", systemImage: "house") {
-                HomeView(showsSettings: $showsSettings)
+                HomeView()
             }
 
             Tab("Library", systemImage: "music.note.list") {
-                LibraryView(showsSettings: $showsSettings)
+                LibraryView()
             }
 
             Tab(role: .search) {
-                SearchView(showsSettings: $showsSettings)
+                SearchView()
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
@@ -41,9 +40,6 @@ struct ContentView: View {
             }
         }
         .tint(AppTheme.tint)
-        .sheet(isPresented: $showsSettings) {
-            SettingsView()
-        }
         .fullScreenCover(isPresented: $showsNowPlaying) {
             AppleMusicNowPlayingView()
                 .navigationTransition(.zoom(sourceID: miniPlayerSourceID, in: zoomNamespace))

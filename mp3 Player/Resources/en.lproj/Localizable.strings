@@ -1,0 +1,128 @@
+/* 
+  Localizable.strings
+  mp3 Player
+  
+  English localization
+*/
+
+// MARK: - Navigation
+"nav.home" = "Home";
+"nav.library" = "Library";
+"nav.search" = "Search";
+"nav.settings" = "Settings";
+
+// MARK: - Home Screen
+"home.section.recent" = "Recent";
+"home.section.recentPlays" = "Recent Plays";
+"home.section.topArtists" = "Top Artists (30d)";
+"home.empty.noRecentItems" = "No recent items";
+"home.empty.noRecentPlays" = "No recent plays";
+"home.empty.noTopArtists" = "No top artists yet";
+
+// MARK: - Library Screen
+"library.section.import" = "Import";
+"library.section.nowPlaying" = "Now Playing";
+"library.section.browse" = "Browse";
+"library.section.missingFiles" = "Missing Files";
+"library.section.library" = "Library";
+"library.import.mode" = "Import Mode";
+"library.import.deleteOriginal" = "Delete original after copy";
+"library.import.files" = "Import Files";
+"library.import.folder" = "Import Folder";
+"library.import.importing" = "Importing...";
+"library.browse.tracks" = "Tracks";
+"library.browse.albums" = "Albums";
+"library.browse.albumArtists" = "Album Artists";
+"library.browse.artists" = "Artists";
+"library.browse.playlists" = "Playlists";
+"library.stats.albums" = "Albums: %d";
+"library.stats.artists" = "Artists: %d";
+"library.stats.tracks" = "Tracks: %d";
+"library.stats.playlists" = "Playlists: %d";
+
+// MARK: - Search Screen
+"search.section.source" = "Source";
+"search.section.appleMusic" = "Apple Music";
+"search.section.results" = "Results";
+"search.scope" = "Search Scope";
+"search.scope.local" = "Local";
+"search.scope.external" = "External";
+"search.placeholder" = "Type to search";
+"search.empty.typeToSearch" = "Type to search";
+"search.empty.typeToSearchAppleMusic" = "Type to search Apple Music.";
+"search.empty.authRequired" = "Apple Music authorization required.";
+"search.action.requestAccess" = "Request Apple Music Access";
+"search.category.artists" = "Artists";
+"search.category.albums" = "Albums";
+"search.category.tracks" = "Tracks";
+"search.category.playlists" = "Playlists";
+"search.category.lyrics" = "Lyrics";
+"search.empty.noArtists" = "No artists";
+"search.empty.noAlbums" = "No albums";
+"search.empty.noTracks" = "No tracks";
+"search.empty.noPlaylists" = "No playlists";
+"search.empty.noLyrics" = "No lyrics matches";
+"search.action.seeAllArtists" = "See all artists";
+"search.action.seeAllAlbums" = "See all albums";
+"search.action.seeAllTracks" = "See all tracks";
+"search.action.seeAllPlaylists" = "See all playlists";
+"search.action.seeAllLyrics" = "See all lyrics";
+
+// MARK: - Context Menu
+"menu.playNext" = "Play Next";
+"menu.addToQueue" = "Add to Queue";
+"menu.addToPlaylist" = "Add to Playlist";
+"menu.addToFavorites" = "Add to Favorites";
+"menu.removeFromFavorites" = "Remove from Favorites";
+"menu.showAlbum" = "Show Album";
+"menu.showArtist" = "Show Artist";
+"menu.delete" = "Delete";
+"menu.deleteTrack" = "Delete Track";
+"menu.relink" = "Relink";
+"menu.remove" = "Remove";
+
+// MARK: - Import
+"import.mode.reference" = "Reference";
+"import.mode.copy" = "Copy";
+"import.mode.copyThenDelete" = "Copy then delete";
+"import.status.imported" = "Imported %d";
+"import.status.relinked" = "Relinked %d";
+"import.status.skipped" = "Skipped %d";
+"import.status.failed" = "Failed %d";
+"import.error.unavailable" = "Database unavailable.";
+"import.error.failed" = "Import failed: %@";
+"import.error.noFiles" = "No files selected.";
+"import.error.noFolder" = "No folder selected.";
+
+// MARK: - Playback
+"playback.notPlaying" = "Not Playing";
+"playback.queueEmpty" = "Queue is empty";
+"playback.clearQueue" = "Clear Queue";
+
+// MARK: - Common Actions
+"action.ok" = "OK";
+"action.cancel" = "Cancel";
+"action.delete" = "Delete";
+"action.add" = "Add";
+"action.done" = "Done";
+"action.edit" = "Edit";
+"action.save" = "Save";
+
+// MARK: - Dialogs
+"dialog.deleteTrack.title" = "Delete Track?";
+"dialog.deleteTrack.message" = "Copied tracks delete the file; referenced tracks are removed from the library only.";
+"dialog.deleteFailed.title" = "Delete Failed";
+"dialog.trackOptions.title" = "Track Options";
+
+// MARK: - Accessibility
+"accessibility.settings" = "Settings";
+"accessibility.nowPlaying" = "Now Playing";
+"accessibility.favorite" = "Favorite";
+
+// MARK: - Missing Files
+"missing.relink.success" = "Relinked %@.";
+"missing.relink.failed" = "Relink failed: %@";
+"missing.relink.noFile" = "No file selected.";
+"missing.relink.unsupported" = "Unsupported file.";
+"missing.delete.success" = "Deleted %@.";
+"missing.delete.failed" = "Delete failed: %@";

@@ -57,12 +57,31 @@ final class HomeViewModel: ObservableObject {
             await loadData(appDatabase: appDatabase)
         }
     }
+    
+    func loadAllRecentPlays(appDatabase: AppDatabase) async -> ([RecentAlbumSummary], [RecentPlaylistSummary]) {
+        return await loadRecentPlays(appDatabase: appDatabase, limit: 100)
+    }
+    
+    func loadAllRecentTracks(appDatabase: AppDatabase) async -> [RecentTrackSummary] {
+        return await loadRecentTracksData(appDatabase: appDatabase, limit: 100)
+    }
 
     private func loadData(appDatabase: AppDatabase) async {
+        let (albums, playlists) = await loadRecentPlays(appDatabase: appDatabase, limit: 15)
+        let tracks = await loadRecentTracksData(appDatabase: appDatabase, limit: 10)
+        let artists = await loadTopArtists(appDatabase: appDatabase)
+        
+        recentAlbums = albums
+        recentPlaylists = playlists
+        recentTracks = tracks
+        topArtists = artists
+    }
+    
+    private func loadRecentPlays(appDatabase: AppDatabase, limit: Int) async -> ([RecentAlbumSummary], [RecentPlaylistSummary]) {
         let sinceDate = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         let sinceDay = DateUtils.yyyymmdd(sinceDate)
 
-        let snapshot = (try? await appDatabase.dbPool.read { db -> ([RecentAlbumSummary], [RecentPlaylistSummary], [RecentTrackSummary], [TopArtistSummary]) in
+        let snapshot = (try? await appDatabase.dbPool.read { db -> ([RecentAlbumSummary], [RecentPlaylistSummary]) in
             let albumRows = try Row.fetchAll(
                 db,
                 sql: """
@@ -82,9 +101,9 @@ final class HomeViewModel: ObservableObject {
                 WHERE r.entity_type = ?
                 GROUP BY a.id, r.last_opened_at
                 ORDER BY r.last_opened_at DESC
-                LIMIT 10
+                LIMIT ?
                 """,
-                arguments: [RecentItemType.album]
+                arguments: [RecentItemType.album, limit]
             )
             let albums = albumRows.compactMap { row -> RecentAlbumSummary? in
                 guard let id = row["id"] as Int64? else { return nil }
@@ -109,9 +128,9 @@ final class HomeViewModel: ObservableObject {
                 JOIN playlists p ON p.id = r.entity_id
                 WHERE r.entity_type = ?
                 ORDER BY r.last_opened_at DESC
-                LIMIT 10
+                LIMIT ?
                 """,
-                arguments: [RecentItemType.playlist]
+                arguments: [RecentItemType.playlist, limit]
             )
             var playlists = playlistRows.compactMap { row -> RecentPlaylistSummary? in
                 guard let id = row["id"] as Int64? else { return nil }
@@ -157,6 +176,14 @@ final class HomeViewModel: ObservableObject {
                 }
             }
 
+            return (albums, playlists)
+        }) ?? ([], [])
+        
+        return snapshot
+    }
+    
+    private func loadRecentTracksData(appDatabase: AppDatabase, limit: Int) async -> [RecentTrackSummary] {
+        let snapshot = (try? await appDatabase.dbPool.read { db -> [RecentTrackSummary] in
             let trackRows = try Row.fetchAll(
                 db,
                 sql: """
@@ -177,8 +204,9 @@ final class HomeViewModel: ObservableObject {
                 LEFT JOIN artworks aw
                     ON aw.id = COALESCE(mo.artwork_id, t.artwork_id, t.album_artwork_id)
                 ORDER BY h.played_at DESC
-                LIMIT 10
-                """
+                LIMIT ?
+                """,
+                arguments: [limit]
             )
             let tracks = trackRows.compactMap { row -> RecentTrackSummary? in
                 guard let id = row["id"] as Int64? else { return nil }
@@ -200,7 +228,17 @@ final class HomeViewModel: ObservableObject {
                     isFavorite: isFavorite
                 )
             }
+            return tracks
+        }) ?? []
+        
+        return snapshot
+    }
+    
+    private func loadTopArtists(appDatabase: AppDatabase) async -> [TopArtistSummary] {
+        let sinceDate = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        let sinceDay = DateUtils.yyyymmdd(sinceDate)
 
+        let snapshot = (try? await appDatabase.dbPool.read { db -> [TopArtistSummary] in
             let artistRows = try Row.fetchAll(
                 db,
                 sql: """
@@ -220,12 +258,9 @@ final class HomeViewModel: ObservableObject {
                 return TopArtistSummary(id: id, name: name)
             }
 
-            return (albums, playlists, tracks, artists)
-        }) ?? ([], [], [], [])
-
-        recentAlbums = snapshot.0
-        recentPlaylists = snapshot.1
-        recentTracks = snapshot.2
-        topArtists = snapshot.3
+            return artists
+        }) ?? []
+        
+        return snapshot
     }
 }

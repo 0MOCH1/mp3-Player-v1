@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct HomeView: View {
-    @Binding var showsSettings: Bool
     @Environment(\.appDatabase) private var appDatabase
     @EnvironmentObject private var playbackController: PlaybackController
     @StateObject private var viewModel = HomeViewModel()
@@ -11,118 +10,91 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Recent") {
-                    if viewModel.recentAlbums.isEmpty && viewModel.recentPlaylists.isEmpty {
-                        Text("No recent items")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        let columns = [
-                            GridItem(.flexible(), spacing: 16),
-                            GridItem(.flexible(), spacing: 16)
-                        ]
-                        LazyVGrid(columns: columns, spacing: 16) {
-                            ForEach(viewModel.recentAlbums) { album in
-                                NavigationLink {
-                                    AlbumDetailView(albumId: album.id, albumName: album.name)
-                                } label: {
-                                    AlbumTileView(
-                                        title: album.name,
-                                        artist: album.albumArtist,
-                                        artworkUri: album.artworkUri,
-                                        isFavorite: album.isFavorite
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            ForEach(viewModel.recentPlaylists) { playlist in
-                                NavigationLink {
-                                    PlaylistDetailView(playlistId: playlist.id, playlistName: playlist.name)
-                                } label: {
-                                    PlaylistTileView(
-                                        title: playlist.name,
-                                        artworkUris: playlist.artworkUris,
-                                        isFavorite: playlist.isFavorite
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ScrollPositionDetector()
+                    
+                    // Recent Tracks section header (VStack with Text, not Section.header)
+                    HStack {
+                        Text("Recent Tracks")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        Spacer()
+                        NavigationLink {
+                            RecentTracksListView()
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.secondary)
                         }
-                        .padding(.vertical, 8)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     }
-                }
-
-                Section("Recent Plays") {
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+                    
+                    // Recent Tracks content with 4 rows × variable columns
                     if viewModel.recentTracks.isEmpty {
                         Text("No recent plays")
                             .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
                     } else {
-                        ForEach(viewModel.recentTracks) { track in
-                            TrackRowView(
-                                title: track.title,
-                                subtitle: track.artist,
-                                artworkUri: track.artworkUri,
-                                trackNumber: nil,
-                                isFavorite: track.isFavorite,
-                                isNowPlaying: track.trackId == playbackController.currentItem?.id,
-                                showsArtwork: true,
-                                onPlay: {
-                                    playbackController.playFromHistory(
-                                        source: track.source,
-                                        sourceTrackId: track.sourceTrackId
-                                    )
-                                },
-                                onMore: {
-                                    actionTrack = track
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            LazyHStack(spacing: 0) {
+                                // Create columns, each column has 4 rows
+                                let tracks = Array(viewModel.recentTracks.prefix(20)) // Show up to 20 tracks (5 columns)
+                                let columns = stride(from: 0, to: tracks.count, by: 4).map { index in
+                                    Array(tracks[index..<min(index + 4, tracks.count)])
                                 }
-                            )
-                            .contextMenu {
-                                trackMenuItems(for: track)
-                            }
-                            .listRowInsets(.init())
-                            .listRowSeparator(.visible)
-                            .swipeActions(edge: .leading) {
-                                Button("Add to Queue") {
-                                    enqueueEnd(track)
-                                }
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    if let trackId = track.trackId {
-                                        pendingDelete = TrackDeleteTarget(id: trackId, title: track.title)
+                                
+                                ForEach(Array(columns.enumerated()), id: \.offset) { columnIndex, columnTracks in
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        ForEach(columnTracks) { track in
+                                            Button {
+                                                playbackController.playFromHistory(
+                                                    source: track.source,
+                                                    sourceTrackId: track.sourceTrackId
+                                                )
+                                            } label: {
+                                                TrackRowView(
+                                                    title: track.title,
+                                                    subtitle: track.artist,
+                                                    artworkUri: track.artworkUri,
+                                                    trackNumber: nil,
+                                                    isFavorite: track.isFavorite,
+                                                    isNowPlaying: track.trackId == playbackController.currentItem?.id,
+                                                    showsArtwork: true,
+                                                    onPlay: {
+                                                        playbackController.playFromHistory(
+                                                            source: track.source,
+                                                            sourceTrackId: track.sourceTrackId
+                                                        )
+                                                    },
+                                                    onMore: {
+                                                        actionTrack = track
+                                                    }
+                                                )
+                                            }
+                                            .buttonStyle(.plain)
+                                            .contextMenu {
+                                                trackMenuItems(for: track)
+                                            }
+                                        }
                                     }
-                                } label: {
-                                    Text("Delete")
+                                    .frame(width: 320) // Fixed width per column for snapping
                                 }
                             }
+                            .scrollTargetLayout() // Enable snapping
                         }
-                    }
-                }
-
-                Section("Top Artists (30d)") {
-                    if viewModel.topArtists.isEmpty {
-                        Text("No top artists yet")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(viewModel.topArtists) { artist in
-                            Text(artist.name)
-                        }
+                        .scrollTargetBehavior(.viewAligned) // Snap to columns
+                        .frame(height: 320) // Approximate height for 4 rows
                     }
                 }
             }
-            .appList()
+            .coordinateSpace(name: "scrollCoordinate")
             .navigationTitle("Home")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showsSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Settings")
-                }
-            }
+            .navigationBarTitleDisplayMode(.inline)
             .confirmationDialog(
                 "Track Options",
                 isPresented: Binding(get: { actionTrack != nil }, set: { newValue in
@@ -200,5 +172,5 @@ struct HomeView: View {
 }
 
 #Preview {
-    HomeView(showsSettings: .constant(false))
+    HomeView()
 }

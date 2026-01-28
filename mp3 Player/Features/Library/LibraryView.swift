@@ -3,15 +3,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct LibraryView: View {
-    @Binding var showsSettings: Bool
     @Environment(\.appDatabase) private var appDatabase
     @Environment(\.playbackController) private var playbackController
-    @EnvironmentObject private var progressCenter: ProgressCenter
     @StateObject private var viewModel = LibraryViewModel()
-    @AppStorage("import_mode") private var importModeRaw = ImportMode.copy.rawValue
-    @AppStorage("import_allow_delete_original") private var allowDeleteOriginal = false
-    @State private var isImporting = false
-    @State private var importStatus: String?
     @State private var activeImporter: ActiveImporter?
     @State private var isImporterPresented = false
     @State private var missingStatus: String?
@@ -19,165 +13,206 @@ struct LibraryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Import") {
-                    Picker("Import Mode", selection: $importModeRaw) {
-                        ForEach(ImportMode.allCases, id: \.rawValue) { mode in
-                            Text(importModeLabel(mode)).tag(mode.rawValue)
-                        }
-                    }
-
-                    if selectedImportMode == .copyThenDelete {
-                        Toggle("Delete original after copy", isOn: $allowDeleteOriginal)
-                    }
-
-                    Button {
-                        activeImporter = .importFiles
-                        isImporterPresented = true
-                    } label: {
-                        if isImporting {
-                            ProgressView()
-                        } else {
-                            Label("Import Files", systemImage: "square.and.arrow.down")
-                        }
-                    }
-                    .disabled(isImporting)
-
-                    Button {
-                        activeImporter = .importFolder
-                        isImporterPresented = true
-                    } label: {
-                        Label("Import Folder", systemImage: "folder")
-                    }
-                    .disabled(isImporting)
-
-                    if let progress = progressCenter.current {
-                        VStack(alignment: .leading, spacing: 4) {
-                            if let total = progress.total, total > 0 {
-                                ProgressView(value: Double(progress.processed), total: Double(total)) {
-                                    Text(progress.message)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ScrollPositionDetector()
+                    
+                    // Pinned section (favorites) - no label, 2 rows × 3 columns
+                    if !viewModel.favoriteAlbums.isEmpty || !viewModel.favoritePlaylists.isEmpty {
+                        let columns = [
+                            GridItem(.flexible(), spacing: 16),
+                            GridItem(.flexible(), spacing: 16),
+                            GridItem(.flexible(), spacing: 16)
+                        ]
+                        LazyVGrid(columns: columns, spacing: 16) {
+                            ForEach(viewModel.favoriteAlbums.prefix(6)) { album in
+                                NavigationLink {
+                                    AlbumDetailView(albumId: album.id, albumName: album.name)
+                                } label: {
+                                    AlbumTileView(
+                                        title: album.name,
+                                        artist: album.artist,
+                                        artworkUri: album.artworkUri,
+                                        isFavorite: album.isFavorite
+                                    )
                                 }
-                            } else {
-                                ProgressView(progress.message)
+                                .buttonStyle(.plain)
+                            }
+                            
+                            ForEach(viewModel.favoritePlaylists.prefix(6 - min(6, viewModel.favoriteAlbums.count))) { playlist in
+                                NavigationLink {
+                                    PlaylistDetailView(playlistId: playlist.id, playlistName: playlist.name)
+                                } label: {
+                                    PlaylistTileView(
+                                        title: playlist.name,
+                                        artworkUris: playlist.artworkUris,
+                                        isFavorite: playlist.isFavorite
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
                     }
 
-                    if let importStatus {
-                        Text(importStatus)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if let playbackController {
-                    Section("Now Playing") {
-                        Button {
-                            showsNowPlaying = true
+                    // Browse section - no label
+                    VStack(spacing: 0) {
+                        NavigationLink {
+                            PlaylistListView()
                         } label: {
-                            PlaybackStatusView(controller: playbackController)
+                            HStack {
+                                Label("Playlists", systemImage: "music.note.list")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Divider()
+                            .padding(.leading, 16)
+                        
+                        NavigationLink {
+                            AlbumListView()
+                        } label: {
+                            HStack {
+                                Label("Albums", systemImage: "square.stack")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Divider()
+                            .padding(.leading, 16)
+                        
+                        NavigationLink {
+                            ArtistListView()
+                        } label: {
+                            HStack {
+                                Label("Artists", systemImage: "music.mic")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Divider()
+                            .padding(.leading, 16)
+                        
+                        NavigationLink {
+                            TrackListView()
+                        } label: {
+                            HStack {
+                                Label("Tracks", systemImage: "music.note")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
-                }
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 16)
 
-                Section("Browse") {
-                    NavigationLink("Tracks") {
-                        TrackListView()
-                    }
-                    NavigationLink("Albums") {
-                        AlbumListView()
-                    }
-                    NavigationLink("Album Artists") {
-                        AlbumArtistListView()
-                    }
-                    NavigationLink("Artists") {
-                        ArtistListView()
-                    }
-                    NavigationLink("Playlists") {
-                        PlaylistListView()
-                    }
-                }
+                    // Missing Files section - no label
+                    if !viewModel.missingTracks.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(Array(viewModel.missingTracks.enumerated()), id: \.element.id) { index, track in
+                                VStack(alignment: .leading) {
+                                    Text(track.title)
+                                    if let artist = track.artist {
+                                        Text(artist)
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    if let reasonValue = track.missingReason,
+                                       let reason = MissingReason(rawValue: reasonValue) {
+                                        Text(reason.displayLabel)
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .swipeActions {
+                                    Button {
+                                        activeImporter = .relink(track)
+                                        isImporterPresented = true
+                                    } label: {
+                                        Text("Relink")
+                                    }
+                                    .tint(.blue)
 
-                if !viewModel.missingTracks.isEmpty {
-                    Section("Missing Files") {
-                        ForEach(viewModel.missingTracks) { track in
-                            VStack(alignment: .leading) {
-                                Text(track.title)
-                                if let artist = track.artist {
-                                    Text(artist)
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
+                                    Button(role: .destructive) {
+                                        deleteMissingTrack(track)
+                                    } label: {
+                                        Text("Delete")
+                                    }
                                 }
-                                if let reasonValue = track.missingReason,
-                                   let reason = MissingReason(rawValue: reasonValue) {
-                                    Text(reason.displayLabel)
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .swipeActions {
-                                Button {
-                                    activeImporter = .relink(track)
-                                    isImporterPresented = true
-                                } label: {
-                                    Text("Relink")
-                                }
-                                .tint(.blue)
-
-                                Button(role: .destructive) {
-                                    deleteMissingTrack(track)
-                                } label: {
-                                    Text("Delete")
+                                
+                                if index < viewModel.missingTracks.count - 1 {
+                                    Divider()
+                                        .padding(.leading, 16)
                                 }
                             }
-                        }
 
-                        if let missingStatus {
-                            Text(missingStatus)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
+                            if let missingStatus {
+                                Text(missingStatus)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                            }
                         }
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                        .cornerRadius(10)
+                        .padding(.horizontal, 16)
                     }
+                    
+                    // Library statistics section - kept for future use but not displayed
+                    // VStack {
+                    //     Text("Albums: \(viewModel.counts.albums)")
+                    //     Text("Artists: \(viewModel.counts.artists)")
+                    //     Text("Tracks: \(viewModel.counts.tracks)")
+                    //     Text("Playlists: \(viewModel.counts.playlists)")
+                    // }
                 }
-
-                Section("Library") {
-                    Text("Albums: \(viewModel.counts.albums)")
-                    Text("Artists: \(viewModel.counts.artists)")
-                    Text("Tracks: \(viewModel.counts.tracks)")
-                    Text("Playlists: \(viewModel.counts.playlists)")
-                }
+                .padding(.bottom, 20)
             }
-            .appList()
+            .coordinateSpace(name: "scrollCoordinate")
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Library")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    if let playbackController, !playbackController.queueItems.isEmpty {
-                        EditButton()
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showsSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Settings")
-                }
-            }
+            .navigationBarTitleDisplayMode(.inline)
             .fileImporter(
                 isPresented: $isImporterPresented,
-                allowedContentTypes: importerContentTypes,
-                allowsMultipleSelection: activeImporter?.allowsMultipleSelection ?? false
+                allowedContentTypes: [.audio],
+                allowsMultipleSelection: false
             ) { result in
                 guard let importer = activeImporter else { return }
                 switch importer {
-                case .importFiles:
-                    handleFileImport(result)
-                case .importFolder:
-                    handleFolderImport(result)
                 case .relink(let track):
                     handleRelink(result, target: track)
                 }
@@ -193,134 +228,6 @@ struct LibraryView: View {
             viewModel.loadIfNeeded(appDatabase: appDatabase)
         }
     }
-
-    private var selectedImportMode: ImportMode {
-        ImportMode(rawValue: importModeRaw) ?? .reference
-    }
-
-    private var importerContentTypes: [UTType] {
-        activeImporter?.allowedContentTypes ?? [.audio]
-    }
-
-    private func importModeLabel(_ mode: ImportMode) -> String {
-        switch mode {
-        case .reference:
-            return "Reference"
-        case .copy:
-            return "Copy"
-        case .copyThenDelete:
-            return "Copy then delete"
-        }
-    }
-
-    private func handleFileImport(_ result: Result<[URL], Error>) {
-        guard let appDatabase else {
-            importStatus = "Database unavailable."
-            return
-        }
-
-        switch result {
-        case .failure(let error):
-            importStatus = "Import failed: \(error.localizedDescription)"
-        case .success(let urls):
-            guard !urls.isEmpty else {
-                importStatus = "No files selected."
-                return
-            }
-
-            isImporting = true
-            importStatus = "Importing..."
-            let mode = selectedImportMode
-            let allowDelete = allowDeleteOriginal && mode == .copyThenDelete
-            let importer = LocalImportService(appDatabase: appDatabase)
-            let progressHandler: (OperationProgress) -> Void = { progress in
-                Task { @MainActor in
-                    progressCenter.update(progress)
-                }
-            }
-
-            Task {
-                let result = await importer.importFiles(
-                    from: urls,
-                    mode: mode,
-                    allowDeleteOriginal: allowDelete,
-                    progress: progressHandler
-                )
-                await MainActor.run {
-                    isImporting = false
-                    let summary = [
-                        "Imported \(result.importedCount)",
-                        "Relinked \(result.relinkedCount)",
-                        "Skipped \(result.skippedCount)",
-                        "Failed \(result.failures.count)",
-                    ].joined(separator: ", ")
-                    if result.failures.isEmpty {
-                        importStatus = summary
-                    } else {
-                        let detail = result.failures.first ?? "Unknown error."
-                        importStatus = "\(summary). \(detail)"
-                    }
-                    progressCenter.clear()
-                    viewModel.reload(appDatabase: appDatabase)
-                }
-            }
-        }
-    }
-
-    private func handleFolderImport(_ result: Result<[URL], Error>) {
-        guard let appDatabase else {
-            importStatus = "Database unavailable."
-            return
-        }
-
-        switch result {
-        case .failure(let error):
-            importStatus = "Import failed: \(error.localizedDescription)"
-        case .success(let urls):
-            guard let url = urls.first else {
-                importStatus = "No folder selected."
-                return
-            }
-
-            isImporting = true
-            importStatus = "Importing..."
-            let mode = selectedImportMode
-            let allowDelete = allowDeleteOriginal && mode == .copyThenDelete
-            let importer = LocalImportService(appDatabase: appDatabase)
-            let progressHandler: (OperationProgress) -> Void = { progress in
-                Task { @MainActor in
-                    progressCenter.update(progress)
-                }
-            }
-
-            Task {
-                let result = await importer.importFolder(
-                    from: url,
-                    mode: mode,
-                    allowDeleteOriginal: allowDelete,
-                    progress: progressHandler
-                )
-                await MainActor.run {
-                    isImporting = false
-                    let summary = [
-                        "Imported \(result.importedCount)",
-                        "Relinked \(result.relinkedCount)",
-                        "Skipped \(result.skippedCount)",
-                        "Failed \(result.failures.count)",
-                    ].joined(separator: ", ")
-                    if result.failures.isEmpty {
-                        importStatus = summary
-                    } else {
-                        let detail = result.failures.first ?? "Unknown error."
-                        importStatus = "\(summary). \(detail)"
-                    }
-                    progressCenter.clear()
-                    viewModel.reload(appDatabase: appDatabase)
-                }
-            }
-        }
-    }
-
 
     private func handleRelink(_ result: Result<[URL], Error>, target: MissingTrackSummary) {
         switch result {
@@ -435,29 +342,7 @@ struct LibraryView: View {
 }
 
 private enum ActiveImporter {
-    case importFiles
-    case importFolder
     case relink(MissingTrackSummary)
-
-    var allowsMultipleSelection: Bool {
-        switch self {
-        case .importFiles:
-            return true
-        case .importFolder:
-            return false
-        case .relink:
-            return false
-        }
-    }
-
-    var allowedContentTypes: [UTType] {
-        switch self {
-        case .importFiles, .relink:
-            return [.audio]
-        case .importFolder:
-            return [.folder]
-        }
-    }
 }
 
 private struct PlaybackStatusView: View {
@@ -554,5 +439,5 @@ private struct PlaybackQueueSection: View {
     }
 }
 #Preview {
-    LibraryView(showsSettings: .constant(false))
+    LibraryView()
 }
