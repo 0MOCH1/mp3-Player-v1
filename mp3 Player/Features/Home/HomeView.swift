@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct HomeView: View {
-    @Binding var showsSettings: Bool
     @Environment(\.appDatabase) private var appDatabase
     @EnvironmentObject private var playbackController: PlaybackController
     @StateObject private var viewModel = HomeViewModel()
@@ -113,16 +112,7 @@ struct HomeView: View {
             }
             .appList()
             .navigationTitle("Home")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showsSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Settings")
-                }
-            }
+            .navigationBarTitleDisplayMode(.inline)
             .confirmationDialog(
                 "Track Options",
                 isPresented: Binding(get: { actionTrack != nil }, set: { newValue in
@@ -204,5 +194,5 @@ struct HomeView: View {
 }
 
 #Preview {
-    HomeView(showsSettings: .constant(false))
+    HomeView()
 }

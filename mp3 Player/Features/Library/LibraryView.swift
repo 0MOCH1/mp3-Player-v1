@@ -3,15 +3,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct LibraryView: View {
-    @Binding var showsSettings: Bool
     @Environment(\.appDatabase) private var appDatabase
     @Environment(\.playbackController) private var playbackController
-    @EnvironmentObject private var progressCenter: ProgressCenter
     @StateObject private var viewModel = LibraryViewModel()
-    @AppStorage("import_mode") private var importModeRaw = ImportMode.copy.rawValue
-    @AppStorage("import_allow_delete_original") private var allowDeleteOriginal = false
-    @State private var isImporting = false
-    @State private var importStatus: String?
     @State private var activeImporter: ActiveImporter?
     @State private var isImporterPresented = false
     @State private var missingStatus: String?
@@ -19,60 +13,7 @@ struct LibraryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Import") {
-                    Picker("Import Mode", selection: $importModeRaw) {
-                        ForEach(ImportMode.allCases, id: \.rawValue) { mode in
-                            Text(importModeLabel(mode)).tag(mode.rawValue)
-                        }
-                    }
-
-                    if selectedImportMode == .copyThenDelete {
-                        Toggle("Delete original after copy", isOn: $allowDeleteOriginal)
-                    }
-
-                    Button {
-                        activeImporter = .importFiles
-                        isImporterPresented = true
-                    } label: {
-                        if isImporting {
-                            ProgressView()
-                        } else {
-                            Label("Import Files", systemImage: "square.and.arrow.down")
-                        }
-                    }
-                    .disabled(isImporting)
-
-                    Button {
-                        activeImporter = .importFolder
-                        isImporterPresented = true
-                    } label: {
-                        Label("Import Folder", systemImage: "folder")
-                    }
-                    .disabled(isImporting)
-
-                    if let progress = progressCenter.current {
-                        VStack(alignment: .leading, spacing: 4) {
-                            if let total = progress.total, total > 0 {
-                                ProgressView(value: Double(progress.processed), total: Double(total)) {
-                                    Text(progress.message)
-                                }
-                            } else {
-                                ProgressView(progress.message)
-                            }
-                        }
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    }
-
-                    if let importStatus {
-                        Text(importStatus)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if let playbackController {
+            List {                if let playbackController {
                     Section("Now Playing") {
                         Button {
                             showsNowPlaying = true
@@ -152,32 +93,21 @@ struct LibraryView: View {
             }
             .appList()
             .navigationTitle("Library")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if let playbackController, !playbackController.queueItems.isEmpty {
                         EditButton()
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showsSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Settings")
-                }
             }
             .fileImporter(
                 isPresented: $isImporterPresented,
-                allowedContentTypes: importerContentTypes,
-                allowsMultipleSelection: activeImporter?.allowsMultipleSelection ?? false
+                allowedContentTypes: [.audio],
+                allowsMultipleSelection: false
             ) { result in
                 guard let importer = activeImporter else { return }
                 switch importer {
-                case .importFiles:
-                    handleFileImport(result)
-                case .importFolder:
-                    handleFolderImport(result)
                 case .relink(let track):
                     handleRelink(result, target: track)
                 }
@@ -193,134 +123,6 @@ struct LibraryView: View {
             viewModel.loadIfNeeded(appDatabase: appDatabase)
         }
     }
-
-    private var selectedImportMode: ImportMode {
-        ImportMode(rawValue: importModeRaw) ?? .reference
-    }
-
-    private var importerContentTypes: [UTType] {
-        activeImporter?.allowedContentTypes ?? [.audio]
-    }
-
-    private func importModeLabel(_ mode: ImportMode) -> String {
-        switch mode {
-        case .reference:
-            return "Reference"
-        case .copy:
-            return "Copy"
-        case .copyThenDelete:
-            return "Copy then delete"
-        }
-    }
-
-    private func handleFileImport(_ result: Result<[URL], Error>) {
-        guard let appDatabase else {
-            importStatus = "Database unavailable."
-            return
-        }
-
-        switch result {
-        case .failure(let error):
-            importStatus = "Import failed: \(error.localizedDescription)"
-        case .success(let urls):
-            guard !urls.isEmpty else {
-                importStatus = "No files selected."
-                return
-            }
-
-            isImporting = true
-            importStatus = "Importing..."
-            let mode = selectedImportMode
-            let allowDelete = allowDeleteOriginal && mode == .copyThenDelete
-            let importer = LocalImportService(appDatabase: appDatabase)
-            let progressHandler: (OperationProgress) -> Void = { progress in
-                Task { @MainActor in
-                    progressCenter.update(progress)
-                }
-            }
-
-            Task {
-                let result = await importer.importFiles(
-                    from: urls,
-                    mode: mode,
-                    allowDeleteOriginal: allowDelete,
-                    progress: progressHandler
-                )
-                await MainActor.run {
-                    isImporting = false
-                    let summary = [
-                        "Imported \(result.importedCount)",
-                        "Relinked \(result.relinkedCount)",
-                        "Skipped \(result.skippedCount)",
-                        "Failed \(result.failures.count)",
-                    ].joined(separator: ", ")
-                    if result.failures.isEmpty {
-                        importStatus = summary
-                    } else {
-                        let detail = result.failures.first ?? "Unknown error."
-                        importStatus = "\(summary). \(detail)"
-                    }
-                    progressCenter.clear()
-                    viewModel.reload(appDatabase: appDatabase)
-                }
-            }
-        }
-    }
-
-    private func handleFolderImport(_ result: Result<[URL], Error>) {
-        guard let appDatabase else {
-            importStatus = "Database unavailable."
-            return
-        }
-
-        switch result {
-        case .failure(let error):
-            importStatus = "Import failed: \(error.localizedDescription)"
-        case .success(let urls):
-            guard let url = urls.first else {
-                importStatus = "No folder selected."
-                return
-            }
-
-            isImporting = true
-            importStatus = "Importing..."
-            let mode = selectedImportMode
-            let allowDelete = allowDeleteOriginal && mode == .copyThenDelete
-            let importer = LocalImportService(appDatabase: appDatabase)
-            let progressHandler: (OperationProgress) -> Void = { progress in
-                Task { @MainActor in
-                    progressCenter.update(progress)
-                }
-            }
-
-            Task {
-                let result = await importer.importFolder(
-                    from: url,
-                    mode: mode,
-                    allowDeleteOriginal: allowDelete,
-                    progress: progressHandler
-                )
-                await MainActor.run {
-                    isImporting = false
-                    let summary = [
-                        "Imported \(result.importedCount)",
-                        "Relinked \(result.relinkedCount)",
-                        "Skipped \(result.skippedCount)",
-                        "Failed \(result.failures.count)",
-                    ].joined(separator: ", ")
-                    if result.failures.isEmpty {
-                        importStatus = summary
-                    } else {
-                        let detail = result.failures.first ?? "Unknown error."
-                        importStatus = "\(summary). \(detail)"
-                    }
-                    progressCenter.clear()
-                    viewModel.reload(appDatabase: appDatabase)
-                }
-            }
-        }
-    }
-
 
     private func handleRelink(_ result: Result<[URL], Error>, target: MissingTrackSummary) {
         switch result {
@@ -435,29 +237,7 @@ struct LibraryView: View {
 }
 
 private enum ActiveImporter {
-    case importFiles
-    case importFolder
     case relink(MissingTrackSummary)
-
-    var allowsMultipleSelection: Bool {
-        switch self {
-        case .importFiles:
-            return true
-        case .importFolder:
-            return false
-        case .relink:
-            return false
-        }
-    }
-
-    var allowedContentTypes: [UTType] {
-        switch self {
-        case .importFiles, .relink:
-            return [.audio]
-        case .importFolder:
-            return [.folder]
-        }
-    }
 }
 
 private struct PlaybackStatusView: View {
@@ -554,5 +334,5 @@ private struct PlaybackQueueSection: View {
     }
 }
 #Preview {
-    LibraryView(showsSettings: .constant(false))
+    LibraryView()
 }

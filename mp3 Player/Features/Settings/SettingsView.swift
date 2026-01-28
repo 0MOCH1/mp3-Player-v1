@@ -127,6 +127,7 @@ struct SettingsView: View {
             }
             .appList()
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
             .confirmationDialog(
                 "Remove Orphaned Files?",
                 isPresented: $showsCleanupConfirm,
