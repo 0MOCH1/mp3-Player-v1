@@ -157,7 +157,16 @@ final class LocalImportService: @unchecked Sendable {
 
         let now = Int64(Date().timeIntervalSince1970)
         let baseDirectory = AppDatabase.defaultDirectory
-        let fingerprint = try? computeFingerprint(for: url)
+        
+        // Compute fingerprint with error logging
+        let fingerprint: FileFingerprint?
+        do {
+            fingerprint = try computeFingerprint(for: url)
+        } catch {
+            LogHelper.logWarning("Failed to compute fingerprint for \(url.lastPathComponent)", context: "Import")
+            fingerprint = nil
+        }
+        
         let metadata = try await metadataReader.read(from: url)
         let lyricsContent = cleanedLyrics(metadata.lyrics)
         if let fingerprint,
@@ -232,75 +241,6 @@ final class LocalImportService: @unchecked Sendable {
         )
 
         let trackId = try await appDatabase.dbPool.write { db in
-            func upsertArtistId(name: String?, now: Int64) throws -> Int64? {
-                guard let name else { return nil }
-
-                if let existing = try ArtistRecord
-                    .filter(Column("name") == name)
-                    .fetchOne(db) {
-                    return existing.id
-                }
-
-                let record = ArtistRecord(
-                    id: nil,
-                    name: name,
-                    sortName: nil,
-                    isFavorite: false,
-                    createdAt: now,
-                    updatedAt: now
-                )
-                try record.insert(db)
-                return record.id ?? db.lastInsertedRowID
-            }
-
-            func upsertAlbumId(
-                name: String?,
-                albumArtistId: Int64?,
-                releaseYear: Int?,
-                artworkId: Int64?,
-                now: Int64
-            ) throws -> Int64? {
-                guard let name else { return nil }
-
-                let query = AlbumRecord.filter(Column("name") == name)
-                let filtered: QueryInterfaceRequest<AlbumRecord>
-                if let albumArtistId {
-                    filtered = query.filter(Column("album_artist_id") == albumArtistId)
-                } else {
-                    filtered = query.filter(Column("album_artist_id") == nil)
-                }
-
-                if var existing = try filtered.fetchOne(db) {
-                    var didUpdate = false
-                    if existing.releaseYear == nil, let releaseYear {
-                        existing.releaseYear = releaseYear
-                        didUpdate = true
-                    }
-                    if existing.artworkId == nil, let artworkId {
-                        existing.artworkId = artworkId
-                        didUpdate = true
-                    }
-                    if didUpdate {
-                        existing.updatedAt = now
-                        try existing.update(db)
-                    }
-                    return existing.id
-                }
-
-                let record = AlbumRecord(
-                    id: nil,
-                    name: name,
-                    albumArtistId: albumArtistId,
-                    releaseYear: releaseYear,
-                    artworkId: artworkId,
-                    isFavorite: false,
-                    createdAt: now,
-                    updatedAt: now
-                )
-                try record.insert(db)
-                return record.id ?? db.lastInsertedRowID
-            }
-
             func upsertTrack(_ record: TrackRecord) throws -> Int64 {
                 try db.execute(
                     sql: """
@@ -394,14 +334,15 @@ final class LocalImportService: @unchecked Sendable {
                 now: now,
                 db: db
             )
-            let artistId = try upsertArtistId(name: artistName, now: now)
-            let albumArtistId = try upsertArtistId(name: albumArtistName, now: now) ?? artistId
-            let albumId = try upsertAlbumId(
+            let artistId = try self.upsertArtistId(name: artistName, now: now, db: db)
+            let albumArtistId = try self.upsertArtistId(name: albumArtistName, now: now, db: db) ?? artistId
+            let albumId = try self.upsertAlbumId(
                 name: albumName,
                 albumArtistId: albumArtistId,
                 releaseYear: metadata.releaseYear,
                 artworkId: artworkId,
-                now: now
+                now: now,
+                db: db
             )
             let albumArtworkId = try albumId.flatMap { id in
                 try Int64.fetchOne(
@@ -1264,6 +1205,78 @@ final class LocalImportService: @unchecked Sendable {
             results.append(fileURL)
         }
         return results
+    }
+    
+    /// Helper: Upsert an artist by name, returning its ID
+    private func upsertArtistId(name: String?, now: Int64, db: Database) throws -> Int64? {
+        guard let name else { return nil }
+
+        if let existing = try ArtistRecord
+            .filter(Column("name") == name)
+            .fetchOne(db) {
+            return existing.id
+        }
+
+        let record = ArtistRecord(
+            id: nil,
+            name: name,
+            sortName: nil,
+            isFavorite: false,
+            createdAt: now,
+            updatedAt: now
+        )
+        try record.insert(db)
+        return record.id ?? db.lastInsertedRowID
+    }
+    
+    /// Helper: Upsert an album by name and album artist, returning its ID
+    private func upsertAlbumId(
+        name: String?,
+        albumArtistId: Int64?,
+        releaseYear: Int?,
+        artworkId: Int64?,
+        now: Int64,
+        db: Database
+    ) throws -> Int64? {
+        guard let name else { return nil }
+
+        let query = AlbumRecord.filter(Column("name") == name)
+        let filtered: QueryInterfaceRequest<AlbumRecord>
+        if let albumArtistId {
+            filtered = query.filter(Column("album_artist_id") == albumArtistId)
+        } else {
+            filtered = query.filter(Column("album_artist_id") == nil)
+        }
+
+        if var existing = try filtered.fetchOne(db) {
+            var didUpdate = false
+            if existing.releaseYear == nil, let releaseYear {
+                existing.releaseYear = releaseYear
+                didUpdate = true
+            }
+            if existing.artworkId == nil, let artworkId {
+                existing.artworkId = artworkId
+                didUpdate = true
+            }
+            if didUpdate {
+                existing.updatedAt = now
+                try existing.update(db)
+            }
+            return existing.id
+        }
+
+        let record = AlbumRecord(
+            id: nil,
+            name: name,
+            albumArtistId: albumArtistId,
+            releaseYear: releaseYear,
+            artworkId: artworkId,
+            isFavorite: false,
+            createdAt: now,
+            updatedAt: now
+        )
+        try record.insert(db)
+        return record.id ?? db.lastInsertedRowID
     }
 
     private func cleaned(_ value: String?) -> String? {
