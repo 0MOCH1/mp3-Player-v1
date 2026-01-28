@@ -353,27 +353,23 @@ struct SearchView: View {
     }
 
     private func deleteTrack(_ target: TrackDeleteTarget) {
-        guard let appDatabase else { return }
-        let deletionService = TrackDeletionService(appDatabase: appDatabase)
-        Task {
-            do {
-                _ = try await deletionService.deleteTrack(trackId: target.id)
-                await MainActor.run {
-                    playbackController?.removeTrackFromQueue(trackId: target.id)
-                    pendingDelete = nil
-                    viewModel.updateQuery(
-                        query,
-                        scope: scope,
-                        appDatabase: appDatabase,
-                        appleMusicService: appleMusicService
-                    )
-                }
-            } catch {
-                await MainActor.run {
-                    deleteError = error.localizedDescription
-                }
+        TrackDeletionHelper.deleteTrack(
+            target,
+            appDatabase: appDatabase,
+            playbackController: playbackController,
+            onSuccess: {
+                pendingDelete = nil
+                viewModel.updateQuery(
+                    query,
+                    scope: scope,
+                    appDatabase: appDatabase,
+                    appleMusicService: appleMusicService
+                )
+            },
+            onError: { error in
+                deleteError = error
             }
-        }
+        )
     }
 }
 
