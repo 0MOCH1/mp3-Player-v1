@@ -167,9 +167,9 @@ struct CompactTrackInfoView: View {
             }
             
             // Title + Artist
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(model.display.title)
-                    .font(.headline)
+                    .font(.headline.weight(.semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                 
@@ -188,7 +188,7 @@ struct CompactTrackInfoView: View {
                 model.toggleFavorite()
             } label: {
                 Image(systemName: model.isFavorite ? "star.fill" : "star")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: buttonSize, height: buttonSize)
                     .background(
@@ -202,7 +202,7 @@ struct CompactTrackInfoView: View {
                 // TODO: Show menu
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: buttonSize, height: buttonSize)
                     .background(
@@ -211,7 +211,6 @@ struct CompactTrackInfoView: View {
                     )
             }
         }
-        .padding(.vertical, 8)
     }
 }
 

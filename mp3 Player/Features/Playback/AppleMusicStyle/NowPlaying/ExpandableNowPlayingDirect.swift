@@ -63,8 +63,7 @@ struct ExpandableNowPlayingDirect: View {
                         // TrackInfo - NowPlayingモードかつCompactTrackInfo非表示時のみ表示
                         if model.playerMode == .nowPlaying {
                             TrackInfoView()
-                                .padding(.horizontal, ViewConst.playerCardPaddings)
-                                .padding(.bottom, ViewConst.seekBarToTrackInfoSpacing)
+                                .padding(.bottom, ViewConst.seekBarToTrackInfoSpacing-10)
                                 .transition(.asymmetric(
                                     insertion: .opacity.combined(with: .move(edge: .bottom)),
                                     removal: .opacity.combined(with: .move(edge: .top))
@@ -147,7 +146,7 @@ struct TrackInfoView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: -1) {
+        VStack(alignment: .leading, spacing: 2) {
             let fade = ViewConst.playerCardPaddings
             let cfg = MarqueeText.Config(leftFade: fade, rightFade: fade)
             // Title: title2, semibold
@@ -161,7 +160,7 @@ struct TrackInfoView: View {
             // Artist: title3
             MarqueeText(model.display.subtitle ?? "", config: cfg)
                 .transformEffect(.identity)
-                .font(.title3)
+                .font(.title2)
                 .foregroundStyle(Color(palette.opaque))
                 .blendMode(.overlay)
                 .id(model.display.subtitle)

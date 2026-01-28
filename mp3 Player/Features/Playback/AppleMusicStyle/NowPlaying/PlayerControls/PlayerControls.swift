@@ -29,21 +29,18 @@ struct PlayerControls: View {
                 .padding(.horizontal, indicatorPadding)
             
             // 30pt spacing (seekBar to playerButtons)
-            Spacer().frame(height: ViewConst.playerButtonsToSeekBarSpacing)
+            Spacer().frame(height: ViewConst.playerButtonsToSeekBarSpacing-10)
             
             // Player buttons
-            PlayerButtons(spacing: 50)
+            PlayerButtons(spacing: 42)
                 .padding(.horizontal, ViewConst.playerCardPaddings)
             
             // 30pt spacing (playerButtons to volume)
-            Spacer().frame(height: ViewConst.volumeToPlayerButtonsSpacing)
+            Spacer().frame(height: ViewConst.volumeToPlayerButtonsSpacing+10)
             
             // Volume
             VolumeSlider()
                 .padding(.horizontal, 8)
-            
-            // 10pt spacing (volume to footer)
-            Spacer().frame(height: ViewConst.footerToVolumeSpacing)
             
             // Footer (Lyrics, AirPlay, Queue buttons)
             footer

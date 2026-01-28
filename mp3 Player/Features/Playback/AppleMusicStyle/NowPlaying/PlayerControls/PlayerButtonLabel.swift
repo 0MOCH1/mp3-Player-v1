@@ -46,6 +46,7 @@ struct PlayerButtonLabel: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: size, height: size)
                 .fontWeight(.bold)
+                .contentTransition(.symbolEffect(.replace.offUp))
         }
     }
 }
