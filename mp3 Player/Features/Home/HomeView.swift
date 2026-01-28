@@ -11,53 +11,73 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Recent") {
+                // Recent Plays section with horizontal scrolling
+                Section {
                     if viewModel.recentAlbums.isEmpty && viewModel.recentPlaylists.isEmpty {
                         Text("No recent items")
                             .foregroundStyle(.secondary)
                     } else {
-                        let columns = [
-                            GridItem(.flexible(), spacing: 16),
-                            GridItem(.flexible(), spacing: 16)
-                        ]
-                        LazyVGrid(columns: columns, spacing: 16) {
-                            ForEach(viewModel.recentAlbums) { album in
-                                NavigationLink {
-                                    AlbumDetailView(albumId: album.id, albumName: album.name)
-                                } label: {
-                                    AlbumTileView(
-                                        title: album.name,
-                                        artist: album.albumArtist,
-                                        artworkUri: album.artworkUri,
-                                        isFavorite: album.isFavorite
-                                    )
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 16) {
+                                ForEach(viewModel.recentAlbums) { album in
+                                    NavigationLink {
+                                        AlbumDetailView(albumId: album.id, albumName: album.name)
+                                    } label: {
+                                        AlbumTileView(
+                                            title: album.name,
+                                            artist: album.albumArtist,
+                                            artworkUri: album.artworkUri,
+                                            isFavorite: album.isFavorite
+                                        )
+                                        .frame(width: 160)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
-                            }
-                            ForEach(viewModel.recentPlaylists) { playlist in
-                                NavigationLink {
-                                    PlaylistDetailView(playlistId: playlist.id, playlistName: playlist.name)
-                                } label: {
-                                    PlaylistTileView(
-                                        title: playlist.name,
-                                        artworkUris: playlist.artworkUris,
-                                        isFavorite: playlist.isFavorite
-                                    )
+                                
+                                ForEach(viewModel.recentPlaylists) { playlist in
+                                    NavigationLink {
+                                        PlaylistDetailView(playlistId: playlist.id, playlistName: playlist.name)
+                                    } label: {
+                                        PlaylistTileView(
+                                            title: playlist.name,
+                                            artworkUris: playlist.artworkUris,
+                                            isFavorite: playlist.isFavorite
+                                        )
+                                        .frame(width: 160)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
+                            .padding(.horizontal, 16)
                         }
-                        .padding(.vertical, 8)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowInsets(EdgeInsets())
                     }
+                } header: {
+                    HStack {
+                        Text("Recent")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .textCase(nil)
+                        Spacer()
+                        NavigationLink {
+                            RecentPlaysListView()
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 }
 
-                Section("Recent Plays") {
+                // Recent Tracks section
+                Section {
                     if viewModel.recentTracks.isEmpty {
                         Text("No recent plays")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(viewModel.recentTracks) { track in
+                        ForEach(viewModel.recentTracks.prefix(4)) { track in
                             TrackRowView(
                                 title: track.title,
                                 subtitle: track.artist,
@@ -97,6 +117,23 @@ struct HomeView: View {
                             }
                         }
                     }
+                } header: {
+                    HStack {
+                        Text("Recent Tracks")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .textCase(nil)
+                        Spacer()
+                        NavigationLink {
+                            RecentTracksListView()
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 }
 
                 Section("Top Artists (30d)") {
