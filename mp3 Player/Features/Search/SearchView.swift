@@ -322,14 +322,26 @@ struct SearchView: View {
         guard let playbackController else { return }
         let ids = list.map { $0.id }
         guard let index = list.firstIndex(where: { $0.id == track.id }) else { return }
-        playbackController.setQueue(trackIds: ids, startAt: index, playImmediately: true)
+        playbackController.setQueue(
+            trackIds: ids,
+            startAt: index,
+            playImmediately: true,
+            sourceName: "Search Results",
+            sourceType: .search
+        )
     }
 
     private func playLyricsTrack(_ track: SearchLyricsResult, from list: [SearchLyricsResult]) {
         guard let playbackController else { return }
         let ids = list.map { $0.id }
         guard let index = list.firstIndex(where: { $0.id == track.id }) else { return }
-        playbackController.setQueue(trackIds: ids, startAt: index, playImmediately: true)
+        playbackController.setQueue(
+            trackIds: ids,
+            startAt: index,
+            playImmediately: true,
+            sourceName: "Search Results",
+            sourceType: .search
+        )
     }
 
     private func enqueueNext(trackId: Int64) {

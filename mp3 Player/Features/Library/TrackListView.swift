@@ -209,7 +209,13 @@ struct TrackListView: View {
 
     private func playTrack(_ track: TrackListItem) {
         guard let index = viewModel.trackIds.firstIndex(of: track.id) else { return }
-        playbackController.setQueue(trackIds: viewModel.trackIds, startAt: index, playImmediately: true)
+        playbackController.setQueue(
+            trackIds: viewModel.trackIds,
+            startAt: index,
+            playImmediately: true,
+            sourceName: "All Songs",
+            sourceType: .unknown
+        )
     }
 
     private func enqueueNext(trackId: Int64) {

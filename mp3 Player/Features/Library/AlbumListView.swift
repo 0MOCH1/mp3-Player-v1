@@ -376,7 +376,13 @@ struct AlbumDetailView: View {
 
     private func playTrack(at index: Int) {
         guard index < viewModel.trackIds.count else { return }
-        playbackController.setQueue(trackIds: viewModel.trackIds, startAt: index, playImmediately: true)
+        playbackController.setQueue(
+            trackIds: viewModel.trackIds,
+            startAt: index,
+            playImmediately: true,
+            sourceName: albumName,
+            sourceType: .album
+        )
     }
 
     private func enqueueNext(trackId: Int64) {

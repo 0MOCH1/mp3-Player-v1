@@ -288,7 +288,9 @@ struct PlaylistDetailView: View {
         playbackController.setQueue(
             trackIds: viewModel.trackIds,
             startAt: index,
-            playImmediately: true
+            playImmediately: true,
+            sourceName: playlistName,
+            sourceType: .playlist
         )
     }
 
@@ -313,7 +315,9 @@ struct PlaylistDetailView: View {
         playbackController.setQueue(
             trackIds: viewModel.trackIds.shuffled(),
             startAt: 0,
-            playImmediately: true
+            playImmediately: true,
+            sourceName: playlistName,
+            sourceType: .playlist
         )
     }
 

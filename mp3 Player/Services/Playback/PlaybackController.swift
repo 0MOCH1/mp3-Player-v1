@@ -107,9 +107,18 @@ final class PlaybackController: ObservableObject {
         refreshQueueArtwork()
     }
 
-    func setQueue(trackIds: [Int64], startAt index: Int = 0, playImmediately: Bool = true) {
+    func setQueue(trackIds: [Int64], startAt index: Int = 0, playImmediately: Bool = true, sourceName: String? = nil, sourceType: QueueSourceType = .unknown) {
         Task {
-            let items = await fetchPlaybackItemsAsync(trackIds: trackIds)
+            var items = await fetchPlaybackItemsAsync(trackIds: trackIds)
+            // ソース情報を設定
+            if sourceName != nil || sourceType != .unknown {
+                items = items.map { item in
+                    var mutableItem = item
+                    mutableItem.queueSourceName = sourceName
+                    mutableItem.queueSourceType = sourceType
+                    return mutableItem
+                }
+            }
             queue = items
             queueItems = items
             persistQueueSnapshot(items)
@@ -184,6 +193,24 @@ final class PlaybackController: ObservableObject {
         queueItems = queue
         persistQueueReplace(at: safeIndex, with: item)
 
+        Task { await setCurrentIndex(safeIndex, playImmediately: true, recordHistory: true) }
+    }
+    
+    /// 履歴からトラックIDで再生を開始 (v8仕様対応)
+    func playFromHistoryById(_ trackId: Int64) {
+        guard let item = fetchPlaybackItemByTrackId(trackId) else { return }
+        
+        if queue.isEmpty {
+            setQueue(trackIds: [item.id], startAt: 0, playImmediately: true)
+            return
+        }
+        
+        let index = currentIndex ?? 0
+        let safeIndex = min(max(index, 0), queue.count - 1)
+        queue[safeIndex] = item
+        queueItems = queue
+        persistQueueReplace(at: safeIndex, with: item)
+        
         Task { await setCurrentIndex(safeIndex, playImmediately: true, recordHistory: true) }
     }
 
@@ -581,10 +608,41 @@ final class PlaybackController: ObservableObject {
         } else if duration > 0 {
             info[MPMediaItemPropertyPlaybackDuration] = duration
         }
+        
+        // アートワークを設定（AirPlayポップアップに表示されるため）
+        // ローカルファイルのみ同期で読み込み、リモートリソースは非同期で読み込み
+        if let artworkUri = item.artworkUri,
+           let artworkURL = URL(string: artworkUri) {
+            if artworkURL.isFileURL {
+                // ローカルファイルは同期で読み込み
+                if let imageData = try? Data(contentsOf: artworkURL),
+                   let image = UIImage(data: imageData) {
+                    let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                    info[MPMediaItemPropertyArtwork] = artwork
+                }
+            } else {
+                // リモートリソースは非同期で読み込み
+                loadArtworkAsync(from: artworkURL)
+            }
+        }
 
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = (state == .playing) ? 1.0 : 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+    
+    private func loadArtworkAsync(from url: URL) {
+        Task.detached(priority: .userInitiated) {
+            guard let imageData = try? Data(contentsOf: url),
+                  let image = UIImage(data: imageData) else { return }
+            
+            await MainActor.run {
+                var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+                let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                info[MPMediaItemPropertyArtwork] = artwork
+                MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+            }
+        }
     }
 
     private func updateNowPlayingTime() {
@@ -1031,6 +1089,12 @@ final class PlaybackController: ObservableObject {
             artistId: row["artist_id"] as Int64?
         )
     }
+    
+    /// トラックIDからPlaybackItemを取得 (v8仕様対応)
+    private func fetchPlaybackItemByTrackId(_ trackId: Int64) -> PlaybackItem? {
+        let items = fetchPlaybackItems(trackIds: [trackId])
+        return items.first
+    }
 
     private func restoreQueueIfNeeded() async {
         guard !didRestoreQueue else { return }
@@ -1213,6 +1277,48 @@ final class PlaybackController: ObservableObject {
                 position: position,
                 updatedAt: updatedAt
             )
+        }
+    }
+    
+    // MARK: - History
+    
+    /// 最近再生した履歴を取得
+    func getRecentHistory(limit: Int = 20) async -> [(id: Int64, title: String, artist: String?, artworkUri: String?, playedAt: Date)] {
+        let dbPool = appDatabase.dbPool
+        let rows = (try? await dbPool.read { db -> [Row] in
+            try Row.fetchAll(
+                db,
+                sql: """
+                SELECT
+                    h.id AS history_id,
+                    h.played_at AS played_at,
+                    t.id AS track_id,
+                    COALESCE(mo.title, t.title) AS title,
+                    COALESCE(mo.artist_name, a.name) AS artist_name,
+                    COALESCE(ta.file_uri, aa.file_uri) AS artwork_uri
+                FROM history_entries h
+                JOIN tracks t ON t.source = h.source AND t.source_track_id = h.source_track_id
+                LEFT JOIN metadata_overrides mo ON mo.track_id = t.id
+                LEFT JOIN artists a ON a.id = t.artist_id
+                LEFT JOIN artworks ta ON ta.id = t.artwork_id
+                LEFT JOIN artworks aa ON aa.id = t.album_artwork_id
+                ORDER BY h.played_at DESC
+                LIMIT ?
+                """,
+                arguments: [limit]
+            )
+        }) ?? []
+        
+        return rows.compactMap { row -> (id: Int64, title: String, artist: String?, artworkUri: String?, playedAt: Date)? in
+            guard let historyId = row["history_id"] as Int64?,
+                  let playedAtTimestamp = row["played_at"] as Int64? else {
+                return nil
+            }
+            let title = row["title"] as String? ?? "Unknown Title"
+            let artist = row["artist_name"] as String?
+            let artworkUri = row["artwork_uri"] as String?
+            let playedAt = Date(timeIntervalSince1970: TimeInterval(playedAtTimestamp))
+            return (id: historyId, title: title, artist: artist, artworkUri: artworkUri, playedAt: playedAt)
         }
     }
 }
