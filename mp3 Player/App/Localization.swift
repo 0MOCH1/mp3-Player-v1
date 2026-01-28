@@ -28,7 +28,7 @@ enum L10n {
     // MARK: - Library
     enum Library {
         enum Section {
-            static let import = LocalizedStringKey("library.section.import")
+            static let `import` = LocalizedStringKey("library.section.import")
             static let nowPlaying = LocalizedStringKey("library.section.nowPlaying")
             static let browse = LocalizedStringKey("library.section.browse")
             static let missingFiles = LocalizedStringKey("library.section.missingFiles")

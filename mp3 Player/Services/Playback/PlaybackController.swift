@@ -658,8 +658,6 @@ final class PlaybackController: ObservableObject {
                 LogHelper.logWarning("Failed to load remote artwork: \(url.absoluteString)", context: "NowPlaying")
             }
         }
-            }
-        }
     }
 
     private func updateNowPlayingTime() {
