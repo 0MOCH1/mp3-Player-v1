@@ -47,13 +47,13 @@ struct TrackContextMenu {
             Button {
                 playbackController?.enqueueNext(trackIds: [trackId])
             } label: {
-                Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+                Label(L10n.Menu.playNext, systemImage: "text.line.first.and.arrowtriangle.forward")
             }
             
             Button {
                 playbackController?.enqueueEnd(trackIds: [trackId])
             } label: {
-                Label("Add to Queue", systemImage: "text.append")
+                Label(L10n.Menu.addToQueue, systemImage: "text.append")
             }
         }
         
@@ -65,7 +65,7 @@ struct TrackContextMenu {
                 Button {
                     onAddToPlaylist()
                 } label: {
-                    Label("Add to Playlist", systemImage: "plus.square.on.square")
+                    Label(L10n.Menu.addToPlaylist, systemImage: "plus.square.on.square")
                 }
             }
             
@@ -74,9 +74,9 @@ struct TrackContextMenu {
                     onToggleFavorite()
                 } label: {
                     if isFavorite {
-                        Label("Remove from Favorites", systemImage: "heart.slash")
+                        Label(L10n.Menu.removeFromFavorites, systemImage: "heart.slash")
                     } else {
-                        Label("Add to Favorites", systemImage: "heart")
+                        Label(L10n.Menu.addToFavorites, systemImage: "heart")
                     }
                 }
             }
@@ -90,7 +90,7 @@ struct TrackContextMenu {
                 Button {
                     onShowAlbum()
                 } label: {
-                    Label("Show Album", systemImage: "square.stack")
+                    Label(L10n.Menu.showAlbum, systemImage: "square.stack")
                 }
             }
             
@@ -98,7 +98,7 @@ struct TrackContextMenu {
                 Button {
                     onShowArtist()
                 } label: {
-                    Label("Show Artist", systemImage: "music.mic")
+                    Label(L10n.Menu.showArtist, systemImage: "music.mic")
                 }
             }
         }
@@ -110,7 +110,7 @@ struct TrackContextMenu {
             Button(role: .destructive) {
                 onDelete()
             } label: {
-                Label("Delete Track", systemImage: "trash")
+                Label(L10n.Menu.deleteTrack, systemImage: "trash")
             }
         }
     }
@@ -140,7 +140,7 @@ struct TrackSwipeActions {
         Button {
             playbackController?.enqueueEnd(trackIds: [trackId])
         } label: {
-            Label("Add to Queue", systemImage: "text.append")
+            Label(L10n.Menu.addToQueue, systemImage: "text.append")
         }
         .tint(.blue)
     }
