@@ -332,27 +332,23 @@ struct PlaylistDetailView: View {
     }
 
     private func deleteTrack(_ target: TrackDeleteTarget) {
-        guard let appDatabase else { return }
-        let deletionService = TrackDeletionService(appDatabase: appDatabase)
-        Task {
-            do {
-                _ = try await deletionService.deleteTrack(trackId: target.id)
-                await MainActor.run {
-                    playbackController.removeTrackFromQueue(trackId: target.id)
-                    pendingDelete = nil
-                    viewModel.reload(
-                        playlistId: playlistId,
-                        appDatabase: appDatabase,
-                        sortField: sortField,
-                        sortOrder: sortOrder
-                    )
-                }
-            } catch {
-                await MainActor.run {
-                    deleteError = error.localizedDescription
-                }
+        TrackDeletionHelper.deleteTrack(
+            target,
+            appDatabase: appDatabase,
+            playbackController: playbackController,
+            onSuccess: {
+                pendingDelete = nil
+                viewModel.reload(
+                    playlistId: playlistId,
+                    appDatabase: appDatabase,
+                    sortField: sortField,
+                    sortOrder: sortOrder
+                )
+            },
+            onError: { error in
+                deleteError = error
             }
-        }
+        )
     }
 
     private func moveEntries(_ offsets: IndexSet, _ destination: Int) {
