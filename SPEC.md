@@ -119,6 +119,69 @@
   - Collage fallback: missing artwork uses a placeholder icon; fewer than 4 items show only available artwork.
   - Collage layout: 1 item fills the square; 2 items split evenly; 3 items use a 2-up top row + full-width bottom; 4 items use a 2x2 grid.
 
+## Context Menus (Spec v1)
+### Guiding Rules
+- Menu order is **Management → Playback → Destructive**.
+- No **Play Now** entry in context menus.
+- Single-item actions only (multi-select is planned to move to dedicated selection screens).
+- Destructive actions appear last and always confirm when they remove data.
+- External (Apple Music) items use placeholders only for now.
+
+### Track Context Menus
+**Common actions (shown when applicable):**
+- Management:
+  - Add to Playlist…
+  - Add to Favorites / Remove from Favorites
+  - Edit Metadata (app-copied files only)
+  - Go to Album (if album metadata exists)
+  - Go to Artist (if artist metadata exists)
+- Playback:
+  - Play Next
+  - Add to Queue
+- Destructive:
+  - Remove from Playlist (playlist context only)
+  - Remove from Favorites (favorites context only)
+  - Delete Track (library deletion; copy-mode deletes file, reference-mode removes entry)
+
+**Context-specific notes:**
+- **Player (Now Playing / Queue item)**: do not show Play Now; prioritize management links + queue actions; queue item may also offer Move Up/Down and Remove from Queue (not destructive).
+- **All Tracks**: include Add to Playlist and Favorites; show Delete Track as destructive.
+- **Album Detail**: same as All Tracks; no artwork-specific actions.
+- **Playlist Detail**: include Remove from Playlist; keep Delete Track as destructive (last).
+- **Favorites**: include Remove from Favorites; keep Delete Track as destructive (last).
+- **Search (local)**: same as All Tracks; search results from external sources show placeholders only.
+
+### Album Context Menu
+- Management:
+  - Add to Favorites / Remove from Favorites
+  - Go to Artist
+- Playback:
+  - Play Next
+  - Add to Queue
+  - Shuffle Play
+- Destructive:
+  - Delete Album (confirmation required; implies track deletions)
+
+### Artist Context Menu
+- Management:
+  - Add to Favorites / Remove from Favorites
+- Playback:
+  - Play Next
+  - Add to Queue
+- Destructive:
+  - None
+
+### Playlist Context Menu
+- Management:
+  - Add to Favorites / Remove from Favorites
+  - Rename
+- Playback:
+  - Play Next
+  - Add to Queue
+  - Shuffle Play
+- Destructive:
+  - Delete Playlist (confirmation required)
+
 ## Favorites + Sorting
 - Favorites: tracks, albums, artists, playlists (Favorites is shown as a pseudo-playlist).
 - Favorites-first option for album/artist/playlist lists.
