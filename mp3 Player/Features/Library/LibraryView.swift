@@ -18,7 +18,6 @@ struct LibraryView: View {
     @State private var missingStatus: String?
     @State private var showsNowPlaying = false
     private let thresholdScrollOffset: CGFloat = 48
-    private let headerHeight: CGFloat = 44
 
     var body: some View {
         NavigationStack {
@@ -82,34 +81,20 @@ struct LibraryView: View {
                 }
             }
             .appList()
+            .navigationTitle("Library")
+            .toolbarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Library")
-                        .font(.largeTitle.weight(.semibold))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
                         showsImport = true
                     } label: {
                         Image(systemName: "folder.badge.plus")
-                            .font(.title2.weight(.medium))
-                            .foregroundStyle(.black)
-                            .frame(width: headerHeight, height: headerHeight)
                     }
-                    .glassEffect(.regular.interactive(), in: .circle)
-                    .contentShape(Circle())
-                    .padding(.trailing, 12)
                     Button {
                         showsSettings = true
                     } label: {
                         Image(systemName: "gearshape")
-                            .font(.title2.weight(.medium))
-                            .foregroundStyle(.black)
-                            .frame(width: headerHeight, height: headerHeight)
                     }
-                    .glassEffect(.regular.interactive(), in: .circle)
-                    .contentShape(Circle())
                 }
             }
         }

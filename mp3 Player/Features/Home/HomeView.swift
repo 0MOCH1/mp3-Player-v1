@@ -8,7 +8,6 @@ struct HomeView: View {
     @State private var actionTrack: RecentTrackSummary?
     @State private var pendingDelete: TrackDeleteTarget?
     @State private var deleteError: String?
-    private let headerHeight: CGFloat = 44
 
     var body: some View {
         NavigationStack {
@@ -113,6 +112,8 @@ struct HomeView: View {
                 }
             }
             .appList()
+            .navigationTitle("Home")
+            .toolbarTitleDisplayMode(.large)
             .confirmationDialog(
                 "Track Options",
                 isPresented: Binding(get: { actionTrack != nil }, set: { newValue in
@@ -150,23 +151,12 @@ struct HomeView: View {
                 Text(deleteError ?? "")
             }
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Home")
-                        .font(.largeTitle.weight(.semibold))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showsSettings = true
                     } label: {
                         Image(systemName: "gearshape")
-                            .font(.title2.weight(.medium))
-                            .foregroundStyle(.black)
-                            .frame(width: headerHeight, height: headerHeight)
                     }
-                    .glassEffect(.regular.interactive(), in: .circle)
-                    .contentShape(Circle())
-                    .padding(.trailing, 12)
                 }
             }
         }
