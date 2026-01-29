@@ -20,15 +20,14 @@ struct ArtworkImageView: View {
             Rectangle()
                 .fill(.secondary.opacity(0.15))
             if let image {
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: contentMode)
-                    .clipped()
+                artworkImage(image)
             } else {
                 Image(systemName: placeholderSystemImage)
                     .foregroundStyle(.secondary)
             }
         }
+        .aspectRatio(1, contentMode: .fit)
+        .clipped()
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -47,5 +46,20 @@ struct ArtworkImageView: View {
         }.value
         guard let data, let uiImage = UIImage(data: data) else { return nil }
         return Image(uiImage: uiImage)
+    }
+
+    @ViewBuilder
+    private func artworkImage(_ image: Image) -> some View {
+        if contentMode == .fit {
+            image
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            image
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 }
