@@ -109,6 +109,12 @@ class NowPlayingAdapter {
                 self?.queueItems = newQueue
             }
             .store(in: &cancellables)
+
+        controller.$visualizerLevels
+            .sink { [weak self] newLevels in
+                self?.visualizerLevels = newLevels
+            }
+            .store(in: &cancellables)
         
         controller.$isShuffleEnabled
             .sink { [weak self] newValue in
