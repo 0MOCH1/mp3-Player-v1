@@ -20,9 +20,8 @@ struct ArtworkImageView: View {
             Rectangle()
                 .fill(.secondary.opacity(0.15))
             if let image {
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: contentMode)
+                artworkImage(image)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
             } else {
                 Image(systemName: placeholderSystemImage)
@@ -37,6 +36,15 @@ struct ArtworkImageView: View {
             }
         .task(id: artworkUri) {
             image = await loadImage()
+        }
+    }
+
+    @ViewBuilder
+    private func artworkImage(_ image: Image) -> some View {
+        if contentMode == .fill {
+            image.resizable().scaledToFill()
+        } else {
+            image.resizable().scaledToFit()
         }
     }
 

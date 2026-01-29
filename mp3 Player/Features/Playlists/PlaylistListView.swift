@@ -12,55 +12,64 @@ struct PlaylistListView: View {
     @State private var newPlaylistName = ""
     @State private var playlistToRename: PlaylistListItem?
     @State private var renameText = ""
-    @State private var actionPlaylist: PlaylistListItem?
     @State private var playlistToDelete: PlaylistListItem?
     @State private var showsDeleteConfirm = false
 
     var body: some View {
-        List {
-            Section {
-                NavigationLink {
-                    FavoritesPlaylistView()
-                } label: {
-                    Label("Favorites", systemImage: "star.fill")
-                }
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 12) {
+                    NavigationLink {
+                        FavoritesPlaylistView()
+                    } label: {
+                        Label("Favorites", systemImage: "star.fill")
+                    }
 
-            Section {
-                Button {
-                    showsCreatePlaylist = true
-                } label: {
-                    Label("New Playlist", systemImage: "plus")
+                    Button {
+                        showsCreatePlaylist = true
+                    } label: {
+                        Label("New Playlist", systemImage: "plus")
+                    }
                 }
+                .padding(.horizontal)
+
+                Text("Playlists")
+                    .font(.headline)
+                    .padding(.horizontal)
 
                 if viewModel.playlists.isEmpty {
                     Text("No playlists yet")
                         .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
                 } else {
-                    ForEach(viewModel.playlists) { playlist in
-                        NavigationLink {
-                            PlaylistDetailView(playlistId: playlist.id, playlistName: playlist.name)
-                        } label: {
-                            PlaylistRowView(
-                                title: playlist.name,
-                                artworkUris: playlist.artworkUris,
-                                isFavorite: playlist.isFavorite,
-                                onMore: {
-                                    actionPlaylist = playlist
-                                }
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            playlistMenuItems(for: playlist)
+                    let columns = [
+                        GridItem(.flexible(), spacing: 16),
+                        GridItem(.flexible(), spacing: 16)
+                    ]
+                    LazyVGrid(columns: columns, spacing: 16) {
+                        ForEach(viewModel.playlists) { playlist in
+                            NavigationLink {
+                                PlaylistDetailView(playlistId: playlist.id, playlistName: playlist.name)
+                            } label: {
+                                PlaylistTileView(
+                                    title: playlist.name,
+                                    artworkUris: playlist.artworkUris,
+                                    isFavorite: playlist.isFavorite
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                playlistMenuItems(for: playlist)
+                            }
                         }
                     }
+                    .padding(.horizontal)
+                    .padding(.bottom, 12)
                 }
-            } header: {
-                Text("Playlists")
             }
+            .padding(.vertical, 12)
         }
-        .appList()
         .navigationTitle("Playlists")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -102,17 +111,6 @@ struct PlaylistListView: View {
                 renamePlaylist()
             }
             Button("Cancel", role: .cancel) {}
-        }
-        .confirmationDialog(
-            "Playlist Options",
-            isPresented: Binding(get: { actionPlaylist != nil }, set: { isPresented in
-                if !isPresented { actionPlaylist = nil }
-            }),
-            titleVisibility: .visible
-        ) {
-            if let playlist = actionPlaylist {
-                playlistMenuItems(for: playlist)
-            }
         }
         .confirmationDialog(
             "Delete Playlist?",
