@@ -1,5 +1,7 @@
+import Accelerate
 import AVFoundation
 import Combine
+import CoreGraphics
 import Foundation
 import GRDB
 import MediaPlayer
@@ -15,12 +17,14 @@ final class PlaybackController: ObservableObject {
     @Published private(set) var queueItems: [PlaybackItem] = []
     @Published private(set) var volume: Float = 1.0
     @Published private(set) var currentLyrics: String?
+    @Published private(set) var visualizerLevels: [CGFloat] = Array(repeating: 0, count: 5)
 
     private let appDatabase: AppDatabase
     private let player = AVPlayer()
     private let fileManager = FileManager.default
     private let queuePersistence: QueuePersistence
     private let positionWriter: PlaybackPositionWriter
+    private let visualizerService: AudioVisualizerService
     private var timeObserver: Any?
     private var timeControlObservation: NSKeyValueObservation?
     private var itemStatusObservation: NSKeyValueObservation?
@@ -41,6 +45,12 @@ final class PlaybackController: ObservableObject {
         self.appDatabase = appDatabase
         self.queuePersistence = QueuePersistence(dbPool: appDatabase.dbPool)
         self.positionWriter = PlaybackPositionWriter(dbPool: appDatabase.dbPool)
+        self.visualizerService = AudioVisualizerService()
+        self.visualizerService.setLevelsHandler { [weak self] levels in
+            Task { @MainActor in
+                self?.visualizerLevels = levels
+            }
+        }
         player.volume = volume
         configureAudioSession()
         installTimeObserver()
@@ -389,6 +399,7 @@ final class PlaybackController: ObservableObject {
         endFileAccess()
         player.pause()
         player.replaceCurrentItem(with: nil)
+        visualizerService.beginDecayToZero()
         state = .stopped
         currentItem = nil
         currentLyrics = nil
@@ -694,6 +705,9 @@ final class PlaybackController: ObservableObject {
         let playerItem = AVPlayerItem(url: resolvedURL)
         observePlayerItemStatus(playerItem)
         player.replaceCurrentItem(with: playerItem)
+        if let audioMix = await visualizerService.makeAudioMix(for: playerItem) {
+            playerItem.audioMix = audioMix
+        }
 
         if item.duration == nil {
             if let assetDuration = try? await playerItem.asset.load(.duration) {
@@ -1412,6 +1426,325 @@ private actor QueuePersistence {
         } catch {
             // Best effort; queue persistence can fail without blocking playback.
         }
+    }
+}
+
+// MARK: - Audio Visualizer
+
+private final class AudioVisualizerService {
+    private static let bandEdges: [Float] = [40, 120, 350, 900, 3500, 12000]
+    private let minDb: Float = -80
+    private let maxDb: Float = 0
+    private let gamma: Float = 0.5
+    private let minVisible: Float = 0.03
+    private let softClipK: Float = 1.4
+    private let attackTime: Float = 0.08
+    private let decayTime: Float = 0.5
+
+    private var levels: [CGFloat] = Array(repeating: 0, count: 5)
+    private var sampleRate: Float = 44100
+    private var channelCount: Int = 2
+    private var isFloat: Bool = true
+    private var isNonInterleaved: Bool = false
+    private var fftSetup: FFTSetup?
+    private var fftSize: Int = 1024
+    private var window: [Float] = []
+    private var decayTimer: DispatchSourceTimer?
+    private var levelsHandler: (([CGFloat]) -> Void)?
+
+    func setLevelsHandler(_ handler: @escaping ([CGFloat]) -> Void) {
+        levelsHandler = handler
+    }
+
+    func makeAudioMix(for item: AVPlayerItem) async -> AVAudioMix? {
+        let tracks = (try? await item.asset.load(.tracks)) ?? []
+        let audioTracks = tracks.filter { $0.mediaType == .audio }
+        guard !audioTracks.isEmpty else { return nil }
+
+        guard let tap = createTap() else { return nil }
+        let mix = AVMutableAudioMix()
+        mix.inputParameters = audioTracks.map { track in
+            let params = AVMutableAudioMixInputParameters(track: track)
+            params.audioTapProcessor = tap
+            return params
+        }
+        return mix
+    }
+
+    func beginDecayToZero() {
+        decayTimer?.cancel()
+        decayTimer = nil
+        guard levels.contains(where: { $0 > 0 }) else { return }
+
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now(), repeating: 1.0 / 30.0)
+        timer.setEventHandler { [weak self] in
+            self?.applyDecayStep()
+        }
+        decayTimer = timer
+        timer.resume()
+    }
+
+    private func applyDecayStep() {
+        let dt = Float(1.0 / 30.0)
+        let releaseCoeff = exp(-dt / decayTime)
+        var updated = levels
+        var didChange = false
+        for index in 0..<updated.count {
+            let current = Float(updated[index])
+            let next = releaseCoeff * current
+            let clipped = next < 0.001 ? 0 : next
+            if clipped != current {
+                didChange = true
+            }
+            updated[index] = CGFloat(clipped)
+        }
+        levels = updated
+        levelsHandler?(updated)
+        if !didChange {
+            decayTimer?.cancel()
+            decayTimer = nil
+        }
+    }
+
+    private func createTap() -> MTAudioProcessingTap? {
+        var callbacks = MTAudioProcessingTapCallbacks(
+            version: kMTAudioProcessingTapCallbacksVersion_0,
+            clientInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
+            init: tapInit,
+            finalize: tapFinalize,
+            prepare: tapPrepare,
+            unprepare: tapUnprepare,
+            process: tapProcess
+        )
+        var tap: MTAudioProcessingTap?
+        let status = MTAudioProcessingTapCreate(kCFAllocatorDefault, &callbacks, kMTAudioProcessingTapCreationFlag_PreEffects, &tap)
+        if status != noErr {
+            return nil
+        }
+        return tap
+    }
+
+    private func prepare(with format: AudioStreamBasicDescription, maxFrames: Int) {
+        sampleRate = Float(format.mSampleRate)
+        channelCount = Int(format.mChannelsPerFrame)
+        isFloat = (format.mFormatFlags & kAudioFormatFlagIsFloat) != 0
+        isNonInterleaved = (format.mFormatFlags & kAudioFormatFlagIsNonInterleaved) != 0
+
+        let maxSize = max(256, min(4096, maxFrames.nextPowerOfTwo))
+        fftSize = maxSize
+        if let existing = fftSetup {
+            vDSP_destroy_fftsetup(existing)
+        }
+        fftSetup = vDSP_create_fftsetup(vDSP_Length(log2(Float(fftSize))), FFTRadix(kFFTRadix2))
+        window = [Float](repeating: 0, count: fftSize)
+        vDSP_hann_window(&window, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
+    }
+
+    private func unprepare() {
+        decayTimer?.cancel()
+        decayTimer = nil
+        if let existing = fftSetup {
+            vDSP_destroy_fftsetup(existing)
+        }
+        fftSetup = nil
+    }
+
+    private func process(tap: MTAudioProcessingTap, numberFrames: Int, bufferList: UnsafeMutablePointer<AudioBufferList>) {
+        guard numberFrames > 0 else { return }
+        decayTimer?.cancel()
+        decayTimer = nil
+        var flags = MTAudioProcessingTapFlags(rawValue: 0)
+        var framesOut = CMItemCount(numberFrames)
+        let status = MTAudioProcessingTapGetSourceAudio(tap, CMItemCount(numberFrames), bufferList, &flags, nil, &framesOut)
+        if status != noErr { return }
+
+        let frameCount = min(Int(framesOut), numberFrames)
+        guard frameCount > 1 else { return }
+        let candidateSize = min(fftSize, frameCount)
+        let effectiveSize = candidateSize.previousPowerOfTwo
+        guard effectiveSize > 1 else { return }
+        let monoSamples = extractMonoSamples(from: bufferList, frameCount: effectiveSize)
+        guard monoSamples.count >= effectiveSize else { return }
+        guard let fftSetup else { return }
+
+        var windowed = monoSamples
+        vDSP_vmul(windowed, 1, window, 1, &windowed, 1, vDSP_Length(effectiveSize))
+
+        var real = [Float](repeating: 0, count: effectiveSize / 2)
+        var imag = [Float](repeating: 0, count: effectiveSize / 2)
+        var splitComplex = DSPSplitComplex(realp: &real, imagp: &imag)
+
+        windowed.withUnsafeMutableBufferPointer { buffer in
+            buffer.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: effectiveSize / 2) { complexBuffer in
+                vDSP_ctoz(complexBuffer, 2, &splitComplex, 1, vDSP_Length(effectiveSize / 2))
+            }
+        }
+        vDSP_fft_zrip(fftSetup, &splitComplex, 1, vDSP_Length(log2(Float(effectiveSize))), FFTDirection(FFT_FORWARD))
+
+        var magnitudes = [Float](repeating: 0, count: effectiveSize / 2)
+        vDSP_zvmags(&splitComplex, 1, &magnitudes, 1, vDSP_Length(effectiveSize / 2))
+
+        let bandLevels = aggregateBands(magnitudes: magnitudes, fftSize: effectiveSize)
+        let smoothed = smoothLevels(bandLevels, frameCount: frameCount)
+        levels = smoothed
+        levelsHandler?(smoothed)
+    }
+
+    private func extractMonoSamples(from bufferList: UnsafeMutablePointer<AudioBufferList>, frameCount: Int) -> [Float] {
+        let audioBufferList = bufferList.pointee
+        let channels = max(1, channelCount)
+        var mono = [Float](repeating: 0, count: frameCount)
+
+        if isNonInterleaved {
+            let bufferCount = Int(audioBufferList.mNumberBuffers)
+            for bufferIndex in 0..<min(bufferCount, channels) {
+                let buffer = audioBufferList.mBuffers.advanced(by: bufferIndex).pointee
+                guard let data = buffer.mData else { continue }
+                if isFloat {
+                    let samples = data.assumingMemoryBound(to: Float.self)
+                    for frame in 0..<frameCount {
+                        mono[frame] += samples[frame] / Float(channels)
+                    }
+                } else {
+                    let samples = data.assumingMemoryBound(to: Int16.self)
+                    for frame in 0..<frameCount {
+                        mono[frame] += Float(samples[frame]) / (32768.0 * Float(channels))
+                    }
+                }
+            }
+        } else {
+            let buffer = audioBufferList.mBuffers
+            guard let data = buffer.mData else { return mono }
+            if isFloat {
+                let samples = data.assumingMemoryBound(to: Float.self)
+                for frame in 0..<frameCount {
+                    var sum: Float = 0
+                    let baseIndex = frame * channels
+                    for channel in 0..<channels {
+                        sum += samples[baseIndex + channel]
+                    }
+                    mono[frame] = sum / Float(channels)
+                }
+            } else {
+                let samples = data.assumingMemoryBound(to: Int16.self)
+                for frame in 0..<frameCount {
+                    var sum: Float = 0
+                    let baseIndex = frame * channels
+                    for channel in 0..<channels {
+                        sum += Float(samples[baseIndex + channel]) / 32768.0
+                    }
+                    mono[frame] = sum / Float(channels)
+                }
+            }
+        }
+        return mono
+    }
+
+    private func aggregateBands(magnitudes: [Float], fftSize: Int) -> [Float] {
+        let binHz = sampleRate / Float(fftSize)
+        var bandValues: [Float] = []
+        for index in 0..<AudioVisualizerService.bandEdges.count - 1 {
+            let startHz = AudioVisualizerService.bandEdges[index]
+            let endHz = AudioVisualizerService.bandEdges[index + 1]
+            let startBin = max(1, Int(startHz / binHz))
+            let endBin = min(magnitudes.count - 1, Int(endHz / binHz))
+            if startBin >= endBin {
+                bandValues.append(0)
+                continue
+            }
+            var sum: Float = 0
+            for bin in startBin..<endBin {
+                sum += magnitudes[bin]
+            }
+            let avg = sum / Float(endBin - startBin)
+            let db = 10 * log10(max(avg, 1e-10))
+            let normalized = max(0, min(1, (db - minDb) / (maxDb - minDb)))
+            let gammaAdjusted = pow(normalized, gamma)
+            let visible = max(gammaAdjusted, minVisible)
+            let softClipped = visible / (1 + softClipK * visible)
+            bandValues.append(softClipped)
+        }
+        return bandValues
+    }
+
+    private func smoothLevels(_ newLevels: [Float], frameCount: Int) -> [CGFloat] {
+        let dt = Float(frameCount) / max(sampleRate, 1)
+        let attackCoeff = exp(-dt / attackTime)
+        let releaseCoeff = exp(-dt / decayTime)
+        var updated: [CGFloat] = []
+        for (index, value) in newLevels.enumerated() {
+            let current = index < levels.count ? Float(levels[index]) : 0
+            let coeff = value > current ? attackCoeff : releaseCoeff
+            let smoothed = coeff * current + (1 - coeff) * value
+            updated.append(CGFloat(smoothed))
+        }
+        return updated
+    }
+}
+
+private struct TapStorage {
+    let service: AudioVisualizerService
+}
+
+private func tapInit(tap: MTAudioProcessingTap, clientInfo: UnsafeMutableRawPointer?, tapStorageOut: UnsafeMutablePointer<UnsafeMutableRawPointer?>) {
+    guard let clientInfo else { return }
+    let service = Unmanaged<AudioVisualizerService>.fromOpaque(clientInfo).takeUnretainedValue()
+    let storage = UnsafeMutablePointer<TapStorage>.allocate(capacity: 1)
+    storage.initialize(to: TapStorage(service: service))
+    tapStorageOut.pointee = UnsafeMutableRawPointer(storage)
+}
+
+private func tapFinalize(tap: MTAudioProcessingTap) {
+    if let storagePointer = MTAudioProcessingTapGetStorage(tap) {
+        let storage = storagePointer.assumingMemoryBound(to: TapStorage.self)
+        storage.deinitialize(count: 1)
+        storage.deallocate()
+    }
+}
+
+private func tapPrepare(tap: MTAudioProcessingTap, maxFrames: CMItemCount, processingFormat: UnsafePointer<AudioStreamBasicDescription>) {
+    guard let storagePointer = MTAudioProcessingTapGetStorage(tap) else { return }
+    let storage = storagePointer.assumingMemoryBound(to: TapStorage.self)
+    storage.pointee.service.prepare(with: processingFormat.pointee, maxFrames: Int(maxFrames))
+}
+
+private func tapUnprepare(tap: MTAudioProcessingTap) {
+    guard let storagePointer = MTAudioProcessingTapGetStorage(tap) else { return }
+    let storage = storagePointer.assumingMemoryBound(to: TapStorage.self)
+    storage.pointee.service.unprepare()
+}
+
+private func tapProcess(
+    tap: MTAudioProcessingTap,
+    numberFrames: CMItemCount,
+    bufferListInOut: UnsafeMutablePointer<AudioBufferList>,
+    numberFramesOut: UnsafeMutablePointer<CMItemCount>,
+    flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>
+) {
+    numberFramesOut.pointee = numberFrames
+    guard let storagePointer = MTAudioProcessingTapGetStorage(tap) else { return }
+    let storage = storagePointer.assumingMemoryBound(to: TapStorage.self)
+    storage.pointee.service.process(tap: tap, numberFrames: Int(numberFrames), bufferList: bufferListInOut)
+}
+
+private extension Int {
+    var nextPowerOfTwo: Int {
+        guard self > 0 else { return 1 }
+        var value = 1
+        while value < self {
+            value <<= 1
+        }
+        return value
+    }
+
+    var previousPowerOfTwo: Int {
+        guard self > 0 else { return 1 }
+        var value = 1
+        while value <= self {
+            value <<= 1
+        }
+        return max(1, value >> 1)
     }
 }
 
