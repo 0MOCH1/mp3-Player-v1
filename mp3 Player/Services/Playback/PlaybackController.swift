@@ -1525,7 +1525,7 @@ private final class AudioVisualizerService {
         return tap
     }
 
-    private func prepare(with format: AudioStreamBasicDescription, maxFrames: Int) {
+    fileprivate func prepare(with format: AudioStreamBasicDescription, maxFrames: Int) {
         sampleRate = Float(format.mSampleRate)
         channelCount = Int(format.mChannelsPerFrame)
         isFloat = (format.mFormatFlags & kAudioFormatFlagIsFloat) != 0
@@ -1541,7 +1541,7 @@ private final class AudioVisualizerService {
         vDSP_hann_window(&window, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
     }
 
-    private func unprepare() {
+    fileprivate func unprepare() {
         decayTimer?.cancel()
         decayTimer = nil
         if let existing = fftSetup {
@@ -1550,7 +1550,7 @@ private final class AudioVisualizerService {
         fftSetup = nil
     }
 
-    private func process(
+    fileprivate func process(
         tap: MTAudioProcessingTap,
         numberFrames: Int,
         bufferList: UnsafeMutablePointer<AudioBufferList>,
@@ -1561,7 +1561,7 @@ private final class AudioVisualizerService {
         decayTimer?.cancel()
         decayTimer = nil
         framesOut = 0
-        flags = MTAudioProcessingTapFlags(rawValue: 0)
+        flags = []
         let status = MTAudioProcessingTapGetSourceAudio(
             tap,
             CMItemCount(numberFrames),
@@ -1610,9 +1610,8 @@ private final class AudioVisualizerService {
         var mono = [Float](repeating: 0, count: frameCount)
 
         if isNonInterleaved {
-            let bufferCount = Int(audioBufferList.mNumberBuffers)
-            for bufferIndex in 0..<min(bufferCount, channels) {
-                let buffer = audioBufferList.mBuffers.advanced(by: bufferIndex).pointee
+            let buffers = UnsafeMutableAudioBufferListPointer(bufferList)
+            for buffer in buffers.prefix(channels) {
                 guard let data = buffer.mData else { continue }
                 if isFloat {
                     let samples = data.assumingMemoryBound(to: Float.self)
@@ -1709,21 +1708,20 @@ private func tapInit(tap: MTAudioProcessingTap, clientInfo: UnsafeMutableRawPoin
 }
 
 private func tapFinalize(tap: MTAudioProcessingTap) {
-    if let storagePointer = MTAudioProcessingTapGetStorage(tap) {
-        let storage = storagePointer.assumingMemoryBound(to: TapStorage.self)
-        storage.deinitialize(count: 1)
-        storage.deallocate()
-    }
+    let storagePointer = MTAudioProcessingTapGetStorage(tap)
+    let storage = storagePointer.assumingMemoryBound(to: TapStorage.self)
+    storage.deinitialize(count: 1)
+    storage.deallocate()
 }
 
 private func tapPrepare(tap: MTAudioProcessingTap, maxFrames: CMItemCount, processingFormat: UnsafePointer<AudioStreamBasicDescription>) {
-    guard let storagePointer = MTAudioProcessingTapGetStorage(tap) else { return }
+    let storagePointer = MTAudioProcessingTapGetStorage(tap)
     let storage = storagePointer.assumingMemoryBound(to: TapStorage.self)
     storage.pointee.service.prepare(with: processingFormat.pointee, maxFrames: Int(maxFrames))
 }
 
 private func tapUnprepare(tap: MTAudioProcessingTap) {
-    guard let storagePointer = MTAudioProcessingTapGetStorage(tap) else { return }
+    let storagePointer = MTAudioProcessingTapGetStorage(tap)
     let storage = storagePointer.assumingMemoryBound(to: TapStorage.self)
     storage.pointee.service.unprepare()
 }
@@ -1731,17 +1729,18 @@ private func tapUnprepare(tap: MTAudioProcessingTap) {
 private func tapProcess(
     tap: MTAudioProcessingTap,
     numberFrames: CMItemCount,
+    flags: MTAudioProcessingTapFlags,
     bufferListInOut: UnsafeMutablePointer<AudioBufferList>,
     numberFramesOut: UnsafeMutablePointer<CMItemCount>,
     flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>
 ) {
     var framesOut: CMItemCount = 0
-    var flags = MTAudioProcessingTapFlags(rawValue: 0)
+    var flags = flags
     defer {
         numberFramesOut.pointee = framesOut
         flagsOut.pointee = flags
     }
-    guard let storagePointer = MTAudioProcessingTapGetStorage(tap) else { return }
+    let storagePointer = MTAudioProcessingTapGetStorage(tap)
     let storage = storagePointer.assumingMemoryBound(to: TapStorage.self)
     storage.pointee.service.process(
         tap: tap,
@@ -1768,7 +1767,7 @@ private extension Int {
         while value <= self {
             value <<= 1
         }
-        return max(1, value >> 1)
+        return Swift.max(1, value >> 1)
     }
 }
 
