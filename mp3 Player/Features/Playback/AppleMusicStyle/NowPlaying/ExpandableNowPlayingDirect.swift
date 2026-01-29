@@ -238,6 +238,13 @@ private struct NowPlayingContentView: View {
             // Show smaller when paused, full size when playing
             let isPlaying = model.state == .playing
             ArtworkImageView(artworkUri: model.display.artworkUri, cornerRadius: 10, contentMode: .fill)
+                .overlay {
+                    ZStack {
+                        Color.black.opacity(0.35)
+                        ArtworkVisualizerOverlayView(levels: model.visualizerLevels)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    }
+                }
                 .matchedGeometryEffect(id: "artwork", in: animation)
                 .padding(isPlaying ? 0 : 48)
                 .shadow(
@@ -248,5 +255,31 @@ private struct NowPlayingContentView: View {
                 .frame(width: size.width, height: size.height)
                 .animation(.smooth, value: model.state)
         }
+    }
+}
+
+private struct ArtworkVisualizerOverlayView: View {
+    let levels: [CGFloat]
+
+    var body: some View {
+        let normalizedLevels = normalizedLevels(for: levels)
+
+        HStack(alignment: .bottom, spacing: 1.5) {
+            ForEach(normalizedLevels.indices, id: \.self) { index in
+                let height = max(2, 16 * normalizedLevels[index])
+                Capsule()
+                    .fill(Color.white)
+                    .frame(width: 2, height: height)
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: levels)
+    }
+
+    private func normalizedLevels(for levels: [CGFloat]) -> [CGFloat] {
+        let clamped = levels.map { min(max($0, 0), 1) }
+        if clamped.count >= 5 {
+            return Array(clamped.prefix(5))
+        }
+        return clamped + Array(repeating: 0, count: 5 - clamped.count)
     }
 }

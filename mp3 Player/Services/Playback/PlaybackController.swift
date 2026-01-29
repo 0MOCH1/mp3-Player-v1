@@ -1,5 +1,6 @@
 import AVFoundation
 import Combine
+import CoreGraphics
 import Foundation
 import GRDB
 import MediaPlayer
@@ -15,6 +16,7 @@ final class PlaybackController: ObservableObject {
     @Published private(set) var queueItems: [PlaybackItem] = []
     @Published private(set) var volume: Float = 1.0
     @Published private(set) var currentLyrics: String?
+    @Published private(set) var visualizerLevels: [CGFloat] = Array(repeating: 0, count: 5)
 
     private let appDatabase: AppDatabase
     private let player = AVPlayer()
