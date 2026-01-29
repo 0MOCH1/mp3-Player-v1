@@ -1550,13 +1550,26 @@ private final class AudioVisualizerService {
         fftSetup = nil
     }
 
-    private func process(tap: MTAudioProcessingTap, numberFrames: Int, bufferList: UnsafeMutablePointer<AudioBufferList>) {
+    private func process(
+        tap: MTAudioProcessingTap,
+        numberFrames: Int,
+        bufferList: UnsafeMutablePointer<AudioBufferList>,
+        framesOut: inout CMItemCount,
+        flags: inout MTAudioProcessingTapFlags
+    ) {
         guard numberFrames > 0 else { return }
         decayTimer?.cancel()
         decayTimer = nil
-        var flags = MTAudioProcessingTapFlags(rawValue: 0)
-        var framesOut = CMItemCount(numberFrames)
-        let status = MTAudioProcessingTapGetSourceAudio(tap, CMItemCount(numberFrames), bufferList, &flags, nil, &framesOut)
+        framesOut = 0
+        flags = MTAudioProcessingTapFlags(rawValue: 0)
+        let status = MTAudioProcessingTapGetSourceAudio(
+            tap,
+            CMItemCount(numberFrames),
+            bufferList,
+            &flags,
+            nil,
+            &framesOut
+        )
         if status != noErr { return }
 
         let frameCount = min(Int(framesOut), numberFrames)
@@ -1722,10 +1735,21 @@ private func tapProcess(
     numberFramesOut: UnsafeMutablePointer<CMItemCount>,
     flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>
 ) {
-    numberFramesOut.pointee = numberFrames
+    var framesOut: CMItemCount = 0
+    var flags = MTAudioProcessingTapFlags(rawValue: 0)
+    defer {
+        numberFramesOut.pointee = framesOut
+        flagsOut.pointee = flags
+    }
     guard let storagePointer = MTAudioProcessingTapGetStorage(tap) else { return }
     let storage = storagePointer.assumingMemoryBound(to: TapStorage.self)
-    storage.pointee.service.process(tap: tap, numberFrames: Int(numberFrames), bufferList: bufferListInOut)
+    storage.pointee.service.process(
+        tap: tap,
+        numberFrames: Int(numberFrames),
+        bufferList: bufferListInOut,
+        framesOut: &framesOut,
+        flags: &flags
+    )
 }
 
 private extension Int {
