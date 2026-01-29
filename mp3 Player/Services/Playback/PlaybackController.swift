@@ -1046,7 +1046,7 @@ final class PlaybackController: ObservableObject {
                     artworkUri: row["artwork_uri"] as String?,
                     title: row["title"] as String? ?? "Unknown Title",
                     artist: row["artist_name"] as String?,
-                    album: row["album_name"] as String?,
+                    album: row["album_name"] as String? ?? "Unknown Album",
                     duration: row["duration"] as Double?,
                     artistId: row["artist_id"] as Int64?
                 )
@@ -1098,7 +1098,7 @@ final class PlaybackController: ObservableObject {
             artworkUri: row["artwork_uri"] as String?,
             title: row["title"] as String? ?? "Unknown Title",
             artist: row["artist_name"] as String?,
-            album: row["album_name"] as String?,
+            album: row["album_name"] as String? ?? "Unknown Album",
             duration: row["duration"] as Double?,
             artistId: row["artist_id"] as Int64?
         )
@@ -1156,7 +1156,7 @@ final class PlaybackController: ObservableObject {
                 artworkUri: row["artwork_uri"] as String?,
                 title: row["title"] as String? ?? "Unknown Title",
                 artist: row["artist_name"] as String?,
-                album: row["album_name"] as String?,
+                album: row["album_name"] as String? ?? "Unknown Album",
                 duration: row["duration"] as Double?,
                 artistId: row["artist_id"] as Int64?
             )
@@ -1561,7 +1561,7 @@ private final class AudioVisualizerService {
         decayTimer?.cancel()
         decayTimer = nil
         framesOut = 0
-        flags = []
+        flags = MTAudioProcessingTapFlags()
         let status = MTAudioProcessingTapGetSourceAudio(
             tap,
             CMItemCount(numberFrames),
