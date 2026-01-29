@@ -17,6 +17,21 @@ struct RecentPlaylistSummary: Identifiable {
     let isFavorite: Bool
 }
 
+struct RecentPlayedItem: Identifiable {
+    enum Kind {
+        case album
+        case playlist
+    }
+
+    let id: Int64
+    let kind: Kind
+    let name: String
+    let albumArtist: String?
+    let artworkUri: String?
+    let artworkUris: [String?]
+    let isFavorite: Bool
+}
+
 struct RecentTrackSummary: Identifiable {
     let id: Int64
     let trackId: Int64?
@@ -35,8 +50,7 @@ struct TopArtistSummary: Identifiable {
 
 @MainActor
 final class HomeViewModel: ObservableObject {
-    @Published var recentAlbums: [RecentAlbumSummary] = []
-    @Published var recentPlaylists: [RecentPlaylistSummary] = []
+    @Published var recentPlayedItems: [RecentPlayedItem] = []
     @Published var recentTracks: [RecentTrackSummary] = []
     @Published var topArtists: [TopArtistSummary] = []
 
@@ -62,66 +76,83 @@ final class HomeViewModel: ObservableObject {
         let sinceDate = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         let sinceDay = DateUtils.yyyymmdd(sinceDate)
 
-        let snapshot = (try? await appDatabase.dbPool.read { db -> ([RecentAlbumSummary], [RecentPlaylistSummary], [RecentTrackSummary], [TopArtistSummary]) in
-            let albumRows = try Row.fetchAll(
+        let snapshot = (try? await appDatabase.dbPool.read { db -> ([RecentPlayedItem], [RecentTrackSummary], [TopArtistSummary]) in
+            let recentItemRows = try Row.fetchAll(
                 db,
                 sql: """
-                SELECT
-                    r.entity_id AS id,
-                    r.last_opened_at AS last_opened_at,
-                    a.name AS name,
-                    COALESCE(ar.name, MIN(tr.name)) AS album_artist_name,
-                    a.is_favorite AS is_favorite,
-                    aw.file_uri AS artwork_uri
-                FROM recent_items r
-                JOIN albums a ON a.id = r.entity_id
-                LEFT JOIN artists ar ON ar.id = a.album_artist_id
-                LEFT JOIN tracks t ON t.album_id = a.id
-                LEFT JOIN artists tr ON tr.id = t.artist_id
-                LEFT JOIN artworks aw ON aw.id = a.artwork_id
-                WHERE r.entity_type = ?
-                GROUP BY a.id, r.last_opened_at
-                ORDER BY r.last_opened_at DESC
-                LIMIT 10
+                SELECT entity_id, entity_type
+                FROM recent_items
+                WHERE entity_type IN (?, ?)
+                ORDER BY last_opened_at DESC
+                LIMIT 12
                 """,
-                arguments: [RecentItemType.album]
+                arguments: [RecentItemType.album, RecentItemType.playlist]
             )
-            let albums = albumRows.compactMap { row -> RecentAlbumSummary? in
-                guard let id = row["id"] as Int64? else { return nil }
-                let name = row["name"] as String? ?? "Unknown Album"
-                let albumArtist = row["album_artist_name"] as String?
-                let artworkUri = row["artwork_uri"] as String?
-                let isFavorite = row["is_favorite"] as Bool? ?? false
-                return RecentAlbumSummary(
-                    id: id,
-                    name: name,
-                    albumArtist: albumArtist,
-                    artworkUri: artworkUri,
-                    isFavorite: isFavorite
-                )
+            let recentItems = recentItemRows.compactMap { row -> (id: Int64, type: RecentItemType)? in
+                guard let id = row["entity_id"] as Int64? else { return nil }
+                let typeRaw = row["entity_type"] as String? ?? RecentItemType.album.rawValue
+                let type = RecentItemType(rawValue: typeRaw) ?? .album
+                return (id, type)
             }
 
-            let playlistRows = try Row.fetchAll(
-                db,
-                sql: """
-                SELECT r.entity_id AS id, p.name AS name, p.is_favorite AS is_favorite
-                FROM recent_items r
-                JOIN playlists p ON p.id = r.entity_id
-                WHERE r.entity_type = ?
-                ORDER BY r.last_opened_at DESC
-                LIMIT 10
-                """,
-                arguments: [RecentItemType.playlist]
-            )
-            var playlists = playlistRows.compactMap { row -> RecentPlaylistSummary? in
-                guard let id = row["id"] as Int64? else { return nil }
-                let name = row["name"] as String? ?? "Unknown Playlist"
-                let isFavorite = row["is_favorite"] as Bool? ?? false
-                return RecentPlaylistSummary(id: id, name: name, artworkUris: [], isFavorite: isFavorite)
+            let albumIds = recentItems.filter { $0.type == .album }.map { $0.id }
+            let playlistIds = recentItems.filter { $0.type == .playlist }.map { $0.id }
+            var albumMap: [Int64: RecentAlbumSummary] = [:]
+            if !albumIds.isEmpty {
+                let placeholders = albumIds.map { _ in "?" }.joined(separator: ",")
+                let albumRows = try Row.fetchAll(
+                    db,
+                    sql: """
+                    SELECT
+                        a.id AS id,
+                        a.name AS name,
+                        COALESCE(ar.name, MIN(tr.name)) AS album_artist_name,
+                        a.is_favorite AS is_favorite,
+                        aw.file_uri AS artwork_uri
+                    FROM albums a
+                    LEFT JOIN artists ar ON ar.id = a.album_artist_id
+                    LEFT JOIN tracks t ON t.album_id = a.id
+                    LEFT JOIN artists tr ON tr.id = t.artist_id
+                    LEFT JOIN artworks aw ON aw.id = a.artwork_id
+                    WHERE a.id IN (\(placeholders))
+                    GROUP BY a.id
+                    """,
+                    arguments: StatementArguments(albumIds)
+                )
+                for row in albumRows {
+                    guard let id = row["id"] as Int64? else { continue }
+                    let name = row["name"] as String? ?? "Unknown Album"
+                    let albumArtist = row["album_artist_name"] as String?
+                    let artworkUri = row["artwork_uri"] as String?
+                    let isFavorite = row["is_favorite"] as Bool? ?? false
+                    albumMap[id] = RecentAlbumSummary(
+                        id: id,
+                        name: name,
+                        albumArtist: albumArtist,
+                        artworkUri: artworkUri,
+                        isFavorite: isFavorite
+                    )
+                }
             }
-            let playlistIds = playlists.map { $0.id }
+
+            var playlistMap: [Int64: RecentPlaylistSummary] = [:]
             if !playlistIds.isEmpty {
                 let placeholders = playlistIds.map { _ in "?" }.joined(separator: ",")
+                let playlistRows = try Row.fetchAll(
+                    db,
+                    sql: """
+                    SELECT id, name, is_favorite
+                    FROM playlists
+                    WHERE id IN (\(placeholders))
+                    """,
+                    arguments: StatementArguments(playlistIds)
+                )
+                for row in playlistRows {
+                    guard let id = row["id"] as Int64? else { continue }
+                    let name = row["name"] as String? ?? "Unknown Playlist"
+                    let isFavorite = row["is_favorite"] as Bool? ?? false
+                    playlistMap[id] = RecentPlaylistSummary(id: id, name: name, artworkUris: [], isFavorite: isFavorite)
+                }
                 let artworkRows = try Row.fetchAll(
                     db,
                     sql: """
@@ -147,11 +178,38 @@ final class HomeViewModel: ObservableObject {
                     list.append(uri)
                     artworkMap[playlistId] = list
                 }
-                playlists = playlists.map { playlist in
-                    RecentPlaylistSummary(
-                        id: playlist.id,
+                for (id, playlist) in playlistMap {
+                    playlistMap[id] = RecentPlaylistSummary(
+                        id: id,
                         name: playlist.name,
-                        artworkUris: artworkMap[playlist.id] ?? [],
+                        artworkUris: artworkMap[id] ?? [],
+                        isFavorite: playlist.isFavorite
+                    )
+                }
+            }
+
+            let playedItems = recentItems.compactMap { item -> RecentPlayedItem? in
+                switch item.type {
+                case .album:
+                    guard let album = albumMap[item.id] else { return nil }
+                    return RecentPlayedItem(
+                        id: album.id,
+                        kind: .album,
+                        name: album.name,
+                        albumArtist: album.albumArtist,
+                        artworkUri: album.artworkUri,
+                        artworkUris: [],
+                        isFavorite: album.isFavorite
+                    )
+                case .playlist:
+                    guard let playlist = playlistMap[item.id] else { return nil }
+                    return RecentPlayedItem(
+                        id: playlist.id,
+                        kind: .playlist,
+                        name: playlist.name,
+                        albumArtist: nil,
+                        artworkUri: nil,
+                        artworkUris: playlist.artworkUris,
                         isFavorite: playlist.isFavorite
                     )
                 }
@@ -177,7 +235,7 @@ final class HomeViewModel: ObservableObject {
                 LEFT JOIN artworks aw
                     ON aw.id = COALESCE(mo.artwork_id, t.artwork_id, t.album_artwork_id)
                 ORDER BY h.played_at DESC
-                LIMIT 10
+                LIMIT 24
                 """
             )
             let tracks = trackRows.compactMap { row -> RecentTrackSummary? in
@@ -220,12 +278,11 @@ final class HomeViewModel: ObservableObject {
                 return TopArtistSummary(id: id, name: name)
             }
 
-            return (albums, playlists, tracks, artists)
-        }) ?? ([], [], [], [])
+            return (playedItems, tracks, artists)
+        }) ?? ([], [], [])
 
-        recentAlbums = snapshot.0
-        recentPlaylists = snapshot.1
-        recentTracks = snapshot.2
-        topArtists = snapshot.3
+        recentPlayedItems = snapshot.0
+        recentTracks = snapshot.1
+        topArtists = snapshot.2
     }
 }
