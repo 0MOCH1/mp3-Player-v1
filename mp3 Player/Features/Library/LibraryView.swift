@@ -17,83 +17,101 @@ struct LibraryView: View {
     @State private var isImporterPresented = false
     @State private var missingStatus: String?
     @State private var showsNowPlaying = false
-    @State private var showHeader = true
     private let thresholdScrollOffset: CGFloat = 48
-    // ヘッダーの高さを一元管理
     private let headerHeight: CGFloat = 44
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .top) {
-                List {
-                    Spacer().frame(height: headerHeight).listRowSeparator(.hidden) // Space for header
-                    
-                        NavigationLink() {
-                            TrackListView()
-                        } label: { Label("Tracks", systemImage: "music.note") }
-                        
-                        NavigationLink() {
-                            AlbumListView()
-                        } label: { Label("Albums", systemImage: "square.stack") }
-                        
-                        NavigationLink() {
-                            ArtistListView()
-                        } label: { Label("Artists", systemImage: "music.microphone") }
-                        
-                        NavigationLink() {
-                            PlaylistListView()
-                        } label: { Label("Playlists", systemImage: "music.note.list") }
+            List {
+                NavigationLink() {
+                    TrackListView()
+                } label: { Label("Tracks", systemImage: "music.note") }
 
-                    if !viewModel.missingTracks.isEmpty {
-                        Section("Missing Files") {
-                            ForEach(viewModel.missingTracks) { track in
-                                VStack(alignment: .leading) {
-                                    Text(track.title)
-                                    if let artist = track.artist {
-                                        Text(artist)
-                                            .font(.footnote)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    if let reasonValue = track.missingReason,
-                                       let reason = MissingReason(rawValue: reasonValue) {
-                                        Text(reason.displayLabel)
-                                            .font(.footnote)
-                                            .foregroundStyle(.secondary)
-                                    }
+                NavigationLink() {
+                    AlbumListView()
+                } label: { Label("Albums", systemImage: "square.stack") }
+
+                NavigationLink() {
+                    ArtistListView()
+                } label: { Label("Artists", systemImage: "music.microphone") }
+
+                NavigationLink() {
+                    PlaylistListView()
+                } label: { Label("Playlists", systemImage: "music.note.list") }
+
+                if !viewModel.missingTracks.isEmpty {
+                    Section("Missing Files") {
+                        ForEach(viewModel.missingTracks) { track in
+                            VStack(alignment: .leading) {
+                                Text(track.title)
+                                if let artist = track.artist {
+                                    Text(artist)
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
                                 }
-                                .swipeActions {
-                                    Button {
-                                        activeImporter = .relink(track)
-                                        isImporterPresented = true
-                                    } label: {
-                                        Text("Relink")
-                                    }
-                                    .tint(.blue)
-
-                                    Button(role: .destructive) {
-                                        deleteMissingTrack(track)
-                                    } label: {
-                                        Text("Delete")
-                                    }
+                                if let reasonValue = track.missingReason,
+                                   let reason = MissingReason(rawValue: reasonValue) {
+                                    Text(reason.displayLabel)
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
+                            .swipeActions {
+                                Button {
+                                    activeImporter = .relink(track)
+                                    isImporterPresented = true
+                                } label: {
+                                    Text("Relink")
+                                }
+                                .tint(.blue)
 
-                            if let missingStatus {
-                                Text(missingStatus)
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
+                                Button(role: .destructive) {
+                                    deleteMissingTrack(track)
+                                } label: {
+                                    Text("Delete")
+                                }
                             }
+                        }
+
+                        if let missingStatus {
+                            Text(missingStatus)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
-                .appList()
-                
-                if showHeader {
-                    header
-                        .transition(.opacity)
+            }
+            .appList()
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Library")
+                        .font(.largeTitle.weight(.semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        showsImport = true
+                    } label: {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.title2.weight(.medium))
+                            .foregroundStyle(.black)
+                            .frame(width: headerHeight, height: headerHeight)
+                    }
+                    .glassEffect(.regular.interactive(), in: .circle)
+                    .contentShape(Circle())
+                    .padding(.trailing, 12)
+                    Button {
+                        showsSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.title2.weight(.medium))
+                            .foregroundStyle(.black)
+                            .frame(width: headerHeight, height: headerHeight)
+                    }
+                    .glassEffect(.regular.interactive(), in: .circle)
+                    .contentShape(Circle())
                 }
             }
-            
         }
         .fileImporter(
             isPresented: $isImporterPresented,
@@ -142,44 +160,6 @@ struct LibraryView: View {
             viewModel.loadIfNeeded(appDatabase: appDatabase)
         }
     }
-    
-    private var header: some View {
-        
-        VStack(spacing: 0) {
-            HStack {
-                Text("Library")
-                    .font(.largeTitle.weight(.semibold))
-                Spacer()
-                // Open import sheet button
-                Button {
-                    showsImport = true
-                } label: {
-                    Image(systemName: "folder.badge.plus")
-                        .font(.title2.weight(.medium))
-                        .foregroundStyle(.black)
-                        .frame(width: headerHeight, height: headerHeight)
-                }
-                .glassEffect(.regular.interactive(), in: .circle)
-                .contentShape(Circle())
-                .padding(.trailing, 12)
-                // Open settings button
-                Button {
-                    showsSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.title2.weight(.medium))
-                        .foregroundStyle(.black)
-                        .frame(width: headerHeight, height: headerHeight)
-                }
-                .glassEffect(.regular.interactive(), in: .circle)
-                .contentShape(Circle())
-            }
-            .padding(.horizontal, 16)
-            .frame(height: headerHeight)
-        }
-    }
-        
-        
 
     private var selectedImportMode: ImportMode {
         ImportMode(rawValue: importModeRaw) ?? .reference
