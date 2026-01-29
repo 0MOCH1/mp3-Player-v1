@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var showsSettings = false
+    @State private var showsImport = false
     @Environment(\.appDatabase) private var appDatabase
     @Environment(\.playbackController) private var playbackController
     @State private var didStartScan = false
@@ -23,7 +24,7 @@ struct ContentView: View {
             }
 
             Tab("Library", systemImage: "music.note.list") {
-                LibraryView(showsSettings: $showsSettings)
+                LibraryView(showsSettings: $showsSettings, showsImport: $showsImport)
             }
 
             Tab(role: .search) {
