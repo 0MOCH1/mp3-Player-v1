@@ -1,8 +1,10 @@
 import AVFoundation
 import Combine
+import CoreGraphics
 import Foundation
 import GRDB
 import MediaPlayer
+import QuartzCore
 
 @MainActor
 final class PlaybackController: ObservableObject {
@@ -15,6 +17,7 @@ final class PlaybackController: ObservableObject {
     @Published private(set) var queueItems: [PlaybackItem] = []
     @Published private(set) var volume: Float = 1.0
     @Published private(set) var currentLyrics: String?
+    @Published private(set) var visualizerLevels: [CGFloat] = Array(repeating: 0, count: 5)
 
     private let appDatabase: AppDatabase
     private let player = AVPlayer()
@@ -36,6 +39,9 @@ final class PlaybackController: ObservableObject {
     private var didRestoreQueue = false
     private var accessedURL: URL?
     private var lastPlaybackStateKey: String?
+    private var visualizerTap: VisualizerAudioTap?
+    private var visualizerSmoothing: [CGFloat] = Array(repeating: 0, count: 5)
+    private let visualizerSmoothingAlpha: CGFloat = 0.35
 
     init(appDatabase: AppDatabase) {
         self.appDatabase = appDatabase
@@ -395,11 +401,16 @@ final class PlaybackController: ObservableObject {
         currentIndex = nil
         currentTime = 0
         duration = 0
+        visualizerTap = nil
+        resetVisualizerLevels()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
     private func updateState(_ newState: PlaybackState) {
         state = newState
+        if newState != .playing {
+            resetVisualizerLevels()
+        }
         updateNowPlayingInfo()
     }
 
@@ -435,6 +446,44 @@ final class PlaybackController: ObservableObject {
                 self.handlePlaybackFailure()
             }
         }
+    }
+
+    private func installVisualizerTap(on item: AVPlayerItem) {
+        let audioTracks = item.asset.tracks(withMediaType: .audio)
+        guard let audioTrack = audioTracks.first else { return }
+
+        visualizerTap = nil
+        guard let visualizerTap = VisualizerAudioTap { [weak self] rmsLevel in
+            Task { @MainActor in
+                self?.updateVisualizerLevels(from: rmsLevel)
+            }
+        } else { return }
+        self.visualizerTap = visualizerTap
+
+        let inputParams = AVMutableAudioMixInputParameters(track: audioTrack)
+        inputParams.audioTapProcessor = visualizerTap.tap
+
+        let audioMix = AVMutableAudioMix()
+        audioMix.inputParameters = [inputParams]
+        item.audioMix = audioMix
+    }
+
+    private func updateVisualizerLevels(from rmsLevel: Float) {
+        guard state == .playing else { return }
+        let normalizedLevel = min(max(CGFloat(rmsLevel) * 4.5, 0), 1)
+        let multipliers: [CGFloat] = [0.6, 0.85, 1.0, 0.85, 0.6]
+        let targets = multipliers.map { min(max(normalizedLevel * $0, 0), 1) }
+        for index in 0..<visualizerSmoothing.count {
+            let current = visualizerSmoothing[index]
+            let target = targets[index]
+            visualizerSmoothing[index] = current + (target - current) * visualizerSmoothingAlpha
+        }
+        visualizerLevels = visualizerSmoothing
+    }
+
+    private func resetVisualizerLevels() {
+        visualizerSmoothing = Array(repeating: 0, count: 5)
+        visualizerLevels = visualizerSmoothing
     }
 
     private func handleTimeControlStatus(_ status: AVPlayer.TimeControlStatus) {
@@ -693,6 +742,7 @@ final class PlaybackController: ObservableObject {
 
         let playerItem = AVPlayerItem(url: resolvedURL)
         observePlayerItemStatus(playerItem)
+        installVisualizerTap(on: playerItem)
         player.replaceCurrentItem(with: playerItem)
 
         if item.duration == nil {
@@ -1439,6 +1489,134 @@ private actor PlaybackPositionWriter {
             // Best effort; playback position save can fail without blocking playback.
         }
     }
+}
+
+private final class VisualizerAudioTap {
+    let tap: MTAudioProcessingTap
+    private let updateHandler: (Float) -> Void
+    private var lastUpdateTime: CFTimeInterval = 0
+    private let updateInterval: CFTimeInterval = 1.0 / 30.0
+    private var isFloatFormat = true
+
+    init?(updateHandler: @escaping (Float) -> Void) {
+        self.updateHandler = updateHandler
+
+        var callbacks = MTAudioProcessingTapCallbacks(
+            version: kMTAudioProcessingTapCallbacksVersion_0,
+            clientInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
+            init: tapInit,
+            finalize: tapFinalize,
+            prepare: tapPrepare,
+            unprepare: tapUnprepare,
+            process: tapProcess
+        )
+
+        var tap: MTAudioProcessingTap?
+        let status = MTAudioProcessingTapCreate(
+            kCFAllocatorDefault,
+            &callbacks,
+            kMTAudioProcessingTapCreationFlag_PostEffects,
+            &tap
+        )
+        guard status == noErr, let createdTap = tap else {
+            return nil
+        }
+        self.tap = createdTap
+    }
+
+    private func handlePrepare(_ processingFormat: AudioStreamBasicDescription) {
+        isFloatFormat = processingFormat.mFormatFlags & kAudioFormatFlagIsFloat != 0
+    }
+
+    private func handleProcess(_ bufferListInOut: UnsafeMutablePointer<AudioBufferList>, frameCount _: CMItemCount) {
+        let now = CACurrentMediaTime()
+        guard now - lastUpdateTime >= updateInterval else { return }
+        lastUpdateTime = now
+
+        let rms = calculateRMS(bufferListInOut)
+        updateHandler(rms)
+    }
+
+    private func calculateRMS(_ bufferListInOut: UnsafeMutablePointer<AudioBufferList>) -> Float {
+        let buffers = UnsafeMutableAudioBufferListPointer(bufferListInOut)
+        var sumSquares: Float = 0
+        var sampleCount = 0
+
+        for buffer in buffers {
+            guard let data = buffer.mData, buffer.mDataByteSize > 0 else { continue }
+            if isFloatFormat {
+                let samples = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size
+                let floatData = data.assumingMemoryBound(to: Float.self)
+                for index in 0..<samples {
+                    let sample = floatData[index]
+                    sumSquares += sample * sample
+                }
+                sampleCount += samples
+            } else {
+                let samples = Int(buffer.mDataByteSize) / MemoryLayout<Int16>.size
+                let intData = data.assumingMemoryBound(to: Int16.self)
+                for index in 0..<samples {
+                    let sample = Float(intData[index]) / Float(Int16.max)
+                    sumSquares += sample * sample
+                }
+                sampleCount += samples
+            }
+        }
+
+        guard sampleCount > 0 else { return 0 }
+        return sqrt(sumSquares / Float(sampleCount))
+    }
+}
+
+private func tapInit(
+    tap: MTAudioProcessingTap,
+    clientInfo: UnsafeMutableRawPointer?,
+    tapStorageOut: UnsafeMutablePointer<UnsafeMutableRawPointer?>
+) {
+    tapStorageOut.pointee = clientInfo
+}
+
+private func tapFinalize(tap: MTAudioProcessingTap) {}
+
+private func tapPrepare(
+    tap: MTAudioProcessingTap,
+    maxFrames: CMItemCount,
+    processingFormat: UnsafePointer<AudioStreamBasicDescription>
+) {
+    guard let storage = MTAudioProcessingTapGetStorage(tap) else { return }
+    let handler = Unmanaged<VisualizerAudioTap>.fromOpaque(storage).takeUnretainedValue()
+    handler.handlePrepare(processingFormat.pointee)
+}
+
+private func tapUnprepare(tap: MTAudioProcessingTap) {}
+
+private func tapProcess(
+    tap: MTAudioProcessingTap,
+    numberFrames: CMItemCount,
+    bufferListInOut: UnsafeMutablePointer<AudioBufferList>,
+    numberFramesOut: UnsafeMutablePointer<CMItemCount>,
+    flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>
+) {
+    var flags: MTAudioProcessingTapFlags = []
+    var timeRange = CMTimeRange.zero
+    var frameCount = numberFrames
+    let status = MTAudioProcessingTapGetSourceAudio(
+        tap,
+        numberFrames,
+        bufferListInOut,
+        &flags,
+        &timeRange,
+        &frameCount
+    )
+    if status != noErr {
+        numberFramesOut.pointee = 0
+        return
+    }
+    numberFramesOut.pointee = frameCount
+
+    guard let storage = MTAudioProcessingTapGetStorage(tap) else { return }
+    let handler = Unmanaged<VisualizerAudioTap>.fromOpaque(storage).takeUnretainedValue()
+    handler.handleProcess(bufferListInOut, frameCount: frameCount)
 }
 
 #if DEBUG

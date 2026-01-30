@@ -54,6 +54,7 @@ class NowPlayingAdapter {
     private(set) var queueItems: [PlaybackItem] = []
     private(set) var isShuffleEnabled: Bool = false
     private(set) var repeatMode: RepeatMode = .off
+    private(set) var visualizerLevels: [CGFloat] = Array(repeating: 0, count: 5)
     
     // History items for Queue panel
     private(set) var historyItems: [HistoryItem] = []
@@ -108,6 +109,12 @@ class NowPlayingAdapter {
                 self?.queueItems = newQueue
             }
             .store(in: &cancellables)
+
+        controller.$visualizerLevels
+            .sink { [weak self] newLevels in
+                self?.visualizerLevels = newLevels
+            }
+            .store(in: &cancellables)
         
         controller.$isShuffleEnabled
             .sink { [weak self] newValue in
@@ -130,6 +137,7 @@ class NowPlayingAdapter {
         self.queueItems = controller.queueItems
         self.isShuffleEnabled = controller.isShuffleEnabled
         self.repeatMode = controller.repeatMode
+        self.visualizerLevels = controller.visualizerLevels
     }
     
     var display: DisplayMedia {
