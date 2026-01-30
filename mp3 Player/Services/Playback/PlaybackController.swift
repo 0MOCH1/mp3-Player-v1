@@ -453,11 +453,11 @@ final class PlaybackController: ObservableObject {
         guard let audioTrack = audioTracks.first else { return }
 
         visualizerTap = nil
-        guard let visualizerTap = VisualizerAudioTap { [weak self] rmsLevel in
+        guard let visualizerTap = VisualizerAudioTap(updateHandler: { [weak self] rmsLevel in
             Task { @MainActor in
                 self?.updateVisualizerLevels(from: rmsLevel)
             }
-        } else { return }
+        }) else { return }
         self.visualizerTap = visualizerTap
 
         let inputParams = AVMutableAudioMixInputParameters(track: audioTrack)
@@ -1524,11 +1524,11 @@ private final class VisualizerAudioTap {
         self.tap = createdTap
     }
 
-    private func handlePrepare(_ processingFormat: AudioStreamBasicDescription) {
+    fileprivate func handlePrepare(_ processingFormat: AudioStreamBasicDescription) {
         isFloatFormat = processingFormat.mFormatFlags & kAudioFormatFlagIsFloat != 0
     }
 
-    private func handleProcess(_ bufferListInOut: UnsafeMutablePointer<AudioBufferList>, frameCount _: CMItemCount) {
+    fileprivate func handleProcess(_ bufferListInOut: UnsafeMutablePointer<AudioBufferList>, frameCount _: CMItemCount) {
         let now = CACurrentMediaTime()
         guard now - lastUpdateTime >= updateInterval else { return }
         lastUpdateTime = now
@@ -1537,7 +1537,7 @@ private final class VisualizerAudioTap {
         updateHandler(rms)
     }
 
-    private func calculateRMS(_ bufferListInOut: UnsafeMutablePointer<AudioBufferList>) -> Float {
+    fileprivate func calculateRMS(_ bufferListInOut: UnsafeMutablePointer<AudioBufferList>) -> Float {
         let buffers = UnsafeMutableAudioBufferListPointer(bufferListInOut)
         var sumSquares: Float = 0
         var sampleCount = 0
@@ -1597,7 +1597,7 @@ private func tapProcess(
     numberFramesOut: UnsafeMutablePointer<CMItemCount>,
     flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>
 ) {
-    var flags: MTAudioProcessingTapFlags = []
+    var flags = MTAudioProcessingTapFlags(rawValue: 0)
     var timeRange = CMTimeRange.zero
     var frameCount = numberFrames
     let status = MTAudioProcessingTapGetSourceAudio(
