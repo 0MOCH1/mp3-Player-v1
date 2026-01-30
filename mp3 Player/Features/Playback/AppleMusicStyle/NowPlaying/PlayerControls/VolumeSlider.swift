@@ -15,6 +15,7 @@ public struct VolumeSlider: View {
     @State var minVolumeAnimationTrigger: Bool = false
     @State var maxVolumeAnimationTrigger: Bool = false
     @State private var volumeView: MPVolumeView?
+    @State private var volumeObservation: NSKeyValueObservation?
     let range = 0.0 ... 1
 
     public var body: some View {
@@ -36,23 +37,15 @@ public struct VolumeSlider: View {
         .font(.system(size: 14, weight: .bold))
         .onAppear {
             // Initialize with system volume
-            volume = Double(AVAudioSession.sharedInstance().outputVolume)
+            updateVolume(Double(AVAudioSession.sharedInstance().outputVolume), animated: false)
             
             // Setup hidden MPVolumeView to suppress OS volume HUD
             setupVolumeView()
-            
-            // Observe system volume changes
-            NotificationCenter.default.addObserver(
-                forName: NSNotification.Name(rawValue: "AVSystemController_SystemVolumeDidChangeNotification"),
-                object: nil,
-                queue: .main
-            ) { notification in
-                if let volumeValue = notification.userInfo?["AVSystemController_AudioVolumeNotificationParameter"] as? Float {
-                    withAnimation(.smooth(duration: 0.2)) {
-                        volume = Double(volumeValue)
-                    }
-                }
-            }
+            observeSystemVolume()
+        }
+        .onDisappear {
+            volumeObservation?.invalidate()
+            volumeObservation = nil
         }
         .onChange(of: volume) { oldValue, newValue in
             // Update system volume via MPVolumeView slider
@@ -70,6 +63,28 @@ public struct VolumeSlider: View {
         .frame(height: 50)
     }
     
+    private func observeSystemVolume() {
+        let session = AVAudioSession.sharedInstance()
+        volumeObservation = session.observe(\.outputVolume, options: [.new]) { _, change in
+            guard let newValue = change.newValue else { return }
+            Task { @MainActor in
+                updateVolume(Double(newValue), animated: true)
+            }
+        }
+    }
+
+    private func updateVolume(_ newValue: Double, animated: Bool) {
+        let clamped = min(max(newValue, range.lowerBound), range.upperBound)
+        guard abs(volume - clamped) > 0.001 else { return }
+        if animated {
+            withAnimation(.smooth(duration: 0.2)) {
+                volume = clamped
+            }
+        } else {
+            volume = clamped
+        }
+    }
+
     private func setupVolumeView() {
         let view = MPVolumeView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
         view.showsVolumeSlider = true
@@ -102,4 +117,3 @@ extension ElasticSliderConfig {
         )
     }
 }
-

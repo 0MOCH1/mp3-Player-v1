@@ -12,6 +12,7 @@ struct TimingIndicator: View {
     @Environment(NowPlayingAdapter.self) var model
     @State var progress: Double = 0
     @State private var lastSeekTime: Double = 0
+    @State private var isUserSeeking: Bool = false
 
     var body: some View {
         let range = 0.0 ... max(model.duration, 1.0)
@@ -33,24 +34,32 @@ struct TimingIndicator: View {
             lastSeekTime = model.currentTime
         }
         .onChange(of: model.currentTime) { _, newTime in
-            // Update progress from playback if user isn't actively changing it
-            if abs(progress - newTime) < 0.5 {
+            guard !isUserSeeking else { return }
+            withAnimation(.smooth(duration: 0.2)) {
                 progress = newTime
             }
         }
         .onChange(of: progress) { oldValue, newValue in
             // User manually changed the slider
-            if abs(newValue - model.currentTime) > 1.0 {
-                lastSeekTime = newValue
-                // Debounce seeking
-                Task {
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
-                    if abs(progress - lastSeekTime) < 0.1 {
-                        model.seek(to: lastSeekTime)
-                    }
+            guard isUserSeeking, abs(newValue - model.currentTime) > 0.1 else { return }
+            lastSeekTime = newValue
+            // Debounce seeking
+            Task {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+                if abs(progress - lastSeekTime) < 0.1 {
+                    model.seek(to: lastSeekTime)
                 }
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    isUserSeeking = true
+                }
+                .onEnded { _ in
+                    isUserSeeking = false
+                }
+        )
     }
 }
 
