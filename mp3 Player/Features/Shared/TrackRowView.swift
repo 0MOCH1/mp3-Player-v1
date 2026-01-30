@@ -10,6 +10,7 @@ struct TrackRowView: View {
     let showsArtwork: Bool
     let onPlay: () -> Void
     let onMore: () -> Void
+    @EnvironmentObject private var playbackController: PlaybackController
     
     private let artworkSize: CGFloat = 48
     private let numberColumnWidth: CGFloat = 24
@@ -25,7 +26,8 @@ struct TrackRowView: View {
                 trackNumber: trackNumber,
                 isNowPlaying: isNowPlaying,
                 showsArtwork: showsArtwork,
-                artworkSize: artworkSize
+                artworkSize: artworkSize,
+                visualizerLevels: playbackController.visualizerLevels
             )
             .padding(.trailing, 12)
 
@@ -68,6 +70,7 @@ private struct TrackLeadingView: View {
     let isNowPlaying: Bool
     let showsArtwork: Bool
     let artworkSize: CGFloat
+    let visualizerLevels: [CGFloat]
     
 
     var body: some View {
@@ -76,12 +79,12 @@ private struct TrackLeadingView: View {
                 ArtworkImageView(artworkUri: artworkUri, cornerRadius: 6, contentMode: .fill)
                     .overlay {
                         if isNowPlaying {
-                            EqualizerBarsView()
+                            TrackRowVisualizerView(levels: visualizerLevels)
                         }
                     }
             } else {
                 if isNowPlaying {
-                    EqualizerBarsView()
+                    TrackRowVisualizerView(levels: visualizerLevels)
                 } else {
                     Text(trackNumber.map(String.init) ?? "-")
                         .font(.footnote.weight(.semibold))
@@ -94,42 +97,31 @@ private struct TrackLeadingView: View {
     }
 }
 
-private struct EqualizerBarsView: View {
-    @State private var phase = false
+private struct TrackRowVisualizerView: View {
+    let levels: [CGFloat]
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 2) {
-            EqualizerBarView(phase: phase, minScale: 0.3, maxScale: 0.9, delay: 0.0)
-            EqualizerBarView(phase: phase, minScale: 0.5, maxScale: 0.2, delay: 0.08)
-            EqualizerBarView(phase: phase, minScale: 0.2, maxScale: 0.8, delay: 0.16)
-            EqualizerBarView(phase: phase, minScale: 0.6, maxScale: 0.3, delay: 0.24)
-            EqualizerBarView(phase: phase, minScale: 0.4, maxScale: 0.7, delay: 0.32)
-        }
-        .frame(width: 20, height: 16)
-        .onAppear {
-            phase.toggle()
+        let normalizedLevels = normalizedLevels(for: levels)
+
+        ZStack {
+            Color.black.opacity(0.35)
+            HStack(alignment: .bottom, spacing: 1.5) {
+                ForEach(normalizedLevels.indices, id: \.self) { index in
+                    let height = max(2, 16 * normalizedLevels[index])
+                    Capsule()
+                        .fill(Color.white)
+                        .frame(width: 2, height: height)
+                }
+            }
+            .animation(.easeOut(duration: 0.12), value: levels)
         }
     }
-}
 
-private struct EqualizerBarView: View {
-    let phase: Bool
-    let minScale: CGFloat
-    let maxScale: CGFloat
-    let delay: Double
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: 1, style: .continuous)
-            .fill(.primary)
-            .frame(width: 3, height: 14)
-            .scaleEffect(y: phase ? maxScale : minScale, anchor: .bottom)
-            .animation(
-                .easeInOut(duration: 0.6)
-                    .repeatForever(autoreverses: true)
-                    .delay(delay),
-                value: phase
-            )
+    private func normalizedLevels(for levels: [CGFloat]) -> [CGFloat] {
+        let clamped = levels.map { min(max($0, 0), 1) }
+        if clamped.count >= 5 {
+            return Array(clamped.prefix(5))
+        }
+        return clamped + Array(repeating: 0, count: 5 - clamped.count)
     }
 }
-
-
