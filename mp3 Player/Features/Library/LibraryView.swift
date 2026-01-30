@@ -87,14 +87,29 @@ struct LibraryView: View {
                     }
                 }
                 .appList()
-                
-                if showHeader {
-                    header
-                        .transition(.opacity)
+            }
+            .toolbarRole(.editor)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Library")
+                        .font(.largeTitle.weight(.semibold))
+                }
+                ToolbarItemGroup{
+                    Button{
+                        showsImport = true
+                    } label: {
+                        Image(systemName: "folder.badge.plus")
+                    }
+                    Button {
+                        showsSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
                 }
             }
             
         }
+        
         .fileImporter(
             isPresented: $isImporterPresented,
             allowedContentTypes: importerContentTypes,
@@ -142,44 +157,6 @@ struct LibraryView: View {
             viewModel.loadIfNeeded(appDatabase: appDatabase)
         }
     }
-    
-    private var header: some View {
-        
-        VStack(spacing: 0) {
-            HStack {
-                Text("Library")
-                    .font(.largeTitle.weight(.semibold))
-                Spacer()
-                // Open import sheet button
-                Button {
-                    showsImport = true
-                } label: {
-                    Image(systemName: "folder.badge.plus")
-                        .font(.title2.weight(.medium))
-                        .foregroundStyle(.black)
-                        .frame(width: headerHeight, height: headerHeight)
-                }
-                .glassEffect(.regular.interactive(), in: .circle)
-                .contentShape(Circle())
-                .padding(.trailing, 12)
-                // Open settings button
-                Button {
-                    showsSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.title2.weight(.medium))
-                        .foregroundStyle(.black)
-                        .frame(width: headerHeight, height: headerHeight)
-                }
-                .glassEffect(.regular.interactive(), in: .circle)
-                .contentShape(Circle())
-            }
-            .padding(.horizontal, 16)
-            .frame(height: headerHeight)
-        }
-    }
-        
-        
 
     private var selectedImportMode: ImportMode {
         ImportMode(rawValue: importModeRaw) ?? .reference

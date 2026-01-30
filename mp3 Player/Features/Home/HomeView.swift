@@ -13,114 +13,28 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .top) {
-                List {
-                    Spacer().frame(height: headerHeight).listRowSeparator(.hidden)
+            List {
+                Spacer().frame(height: headerHeight).listRowSeparator(.hidden)
 
-                    Section("Recent") {
-                        if viewModel.recentAlbums.isEmpty && viewModel.recentPlaylists.isEmpty {
-                            Text("No recent items")
-                                .foregroundStyle(.secondary)
-                        } else {
-                            let columns = [
-                                GridItem(.flexible(), spacing: 16),
-                                GridItem(.flexible(), spacing: 16)
-                            ]
-                            LazyVGrid(columns: columns, spacing: 16) {
-                                ForEach(viewModel.recentAlbums) { album in
-                                    NavigationLink {
-                                        AlbumDetailView(albumId: album.id, albumName: album.name)
-                                    } label: {
-                                        AlbumTileView(
-                                            title: album.name,
-                                            artist: album.albumArtist,
-                                            artworkUri: album.artworkUri,
-                                            isFavorite: album.isFavorite
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                ForEach(viewModel.recentPlaylists) { playlist in
-                                    NavigationLink {
-                                        PlaylistDetailView(playlistId: playlist.id, playlistName: playlist.name)
-                                    } label: {
-                                        PlaylistTileView(
-                                            title: playlist.name,
-                                            artworkUris: playlist.artworkUris,
-                                            isFavorite: playlist.isFavorite
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.vertical, 8)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                        }
-                    }
-
-                    Section("Recent Plays") {
-                        if viewModel.recentTracks.isEmpty {
-                            Text("No recent plays")
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(viewModel.recentTracks) { track in
-                                TrackRowView(
-                                    title: track.title,
-                                    subtitle: track.artist,
-                                    artworkUri: track.artworkUri,
-                                    trackNumber: nil,
-                                    isFavorite: track.isFavorite,
-                                    isNowPlaying: track.trackId == playbackController.currentItem?.id,
-                                    showsArtwork: true,
-                                    onPlay: {
-                                        playbackController.playFromHistory(
-                                            source: track.source,
-                                            sourceTrackId: track.sourceTrackId
-                                        )
-                                    },
-                                    onMore: {
-                                        actionTrack = track
-                                    }
-                                )
-                                .contextMenu {
-                                    trackMenuItems(for: track)
-                                }
-                                .listRowInsets(.init())
-                                .listRowSeparator(.visible)
-                                .swipeActions(edge: .leading) {
-                                    Button("Add to Queue") {
-                                        enqueueEnd(track)
-                                    }
-                                }
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        if let trackId = track.trackId {
-                                            pendingDelete = TrackDeleteTarget(id: trackId, title: track.title)
-                                        }
-                                    } label: {
-                                        Text("Delete")
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Section("Top Artists (30d)") {
-                        if viewModel.topArtists.isEmpty {
-                            Text("No top artists yet")
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(viewModel.topArtists) { artist in
-                                Text(artist.name)
-                            }
-                        }
-                    }
+                recentSection
+                recentPlaysSection
+                topArtistsSection
+            }
+            .appList()
+            
+            .toolbarRole(.editor)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Home")
+                        .font(.largeTitle.weight(.semibold))
                 }
-                .appList()
-
-                if showHeader {
-                    header
-                        .transition(.opacity)
+                ToolbarItemGroup {
+                    Button {
+                        showsSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    
                 }
             }
             .confirmationDialog(
@@ -166,26 +80,108 @@ struct HomeView: View {
         }
     }
 
-    private var header: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Home")
-                    .font(.largeTitle.weight(.semibold))
-                Spacer()
-                Button {
-                    showsSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.title2.weight(.medium))
-                        .foregroundStyle(.black)
-                        .frame(width: headerHeight, height: headerHeight)
+    private var recentSection: some View {
+        Section("Recent") {
+            if viewModel.recentAlbums.isEmpty && viewModel.recentPlaylists.isEmpty {
+                Text("No recent items")
+                    .foregroundStyle(.secondary)
+            } else {
+                let columns = [
+                    GridItem(.flexible(), spacing: 16),
+                    GridItem(.flexible(), spacing: 16)
+                ]
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(viewModel.recentAlbums) { album in
+                        NavigationLink {
+                            AlbumDetailView(albumId: album.id, albumName: album.name)
+                        } label: {
+                            AlbumTileView(
+                                title: album.name,
+                                artist: album.albumArtist,
+                                artworkUri: album.artworkUri,
+                                isFavorite: album.isFavorite
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    ForEach(viewModel.recentPlaylists) { playlist in
+                        NavigationLink {
+                            PlaylistDetailView(playlistId: playlist.id, playlistName: playlist.name)
+                        } label: {
+                            PlaylistTileView(
+                                title: playlist.name,
+                                artworkUris: playlist.artworkUris,
+                                isFavorite: playlist.isFavorite
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .glassEffect(.regular.interactive(), in: .circle)
-                .contentShape(Circle())
-                .padding(.trailing, 12)
+                .padding(.vertical, 8)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
             }
-            .padding(.horizontal, 16)
-            .frame(height: headerHeight)
+        }
+    }
+
+    private var recentPlaysSection: some View {
+        Section("Recent Plays") {
+            if viewModel.recentTracks.isEmpty {
+                Text("No recent plays")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(viewModel.recentTracks) { track in
+                    TrackRowView(
+                        title: track.title,
+                        subtitle: track.artist,
+                        artworkUri: track.artworkUri,
+                        trackNumber: nil,
+                        isFavorite: track.isFavorite,
+                        isNowPlaying: track.trackId == playbackController.currentItem?.id,
+                        showsArtwork: true,
+                        onPlay: {
+                            playbackController.playFromHistory(
+                                source: track.source,
+                                sourceTrackId: track.sourceTrackId
+                            )
+                        },
+                        onMore: {
+                            actionTrack = track
+                        }
+                    )
+                    .contextMenu {
+                        trackMenuItems(for: track)
+                    }
+                    .listRowInsets(.init())
+                    .listRowSeparator(.visible)
+                    .swipeActions(edge: .leading) {
+                        Button("Add to Queue") {
+                            enqueueEnd(track)
+                        }
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            if let trackId = track.trackId {
+                                pendingDelete = TrackDeleteTarget(id: trackId, title: track.title)
+                            }
+                        } label: {
+                            Text("Delete")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var topArtistsSection: some View {
+        Section("Top Artists (30d)") {
+            if viewModel.topArtists.isEmpty {
+                Text("No top artists yet")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(viewModel.topArtists) { artist in
+                    Text(artist.name)
+                }
+            }
         }
     }
 
